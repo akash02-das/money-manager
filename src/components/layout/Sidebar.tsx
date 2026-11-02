@@ -6,9 +6,17 @@ import { Wallet, ShieldCheck } from 'lucide-react';
 import { NAV_ITEMS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { useAccounts } from '@/features/accounts/hooks/useAccounts';
+import { useCategories } from '@/features/categories/hooks/useCategories';
+import { useTransactions } from '@/features/transactions/hooks/useTransactions';
+import { useBudgets } from '@/features/budgets/hooks/useBudgets';
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { activeAccountsCount } = useAccounts();
+  const { activeCount: activeCategoriesCount } = useCategories();
+  const { totalCount: totalTransactionsCount } = useTransactions();
+  const { activeMonthBudgetsCount } = useBudgets();
 
   return (
     <aside className="hidden lg:flex w-64 flex-col border-r border-border bg-card/60 backdrop-blur-md">
@@ -39,6 +47,17 @@ export function Sidebar() {
               ? pathname === item.href
               : pathname.startsWith(item.href);
 
+            const badgeValue =
+              item.href === '/accounts'
+                ? activeAccountsCount
+                : item.href === '/categories'
+                ? activeCategoriesCount
+                : item.href === '/transactions'
+                ? totalTransactionsCount
+                : item.href === '/budgets'
+                ? activeMonthBudgetsCount
+                : item.badge;
+
             return (
               <Link
                 key={item.href}
@@ -59,7 +78,7 @@ export function Sidebar() {
                   />
                   <span>{item.title}</span>
                 </div>
-                {item.badge && (
+                {badgeValue !== undefined && (
                   <span
                     className={cn(
                       'rounded-full px-2 py-0.5 text-[10px] font-semibold',
@@ -68,7 +87,7 @@ export function Sidebar() {
                         : 'bg-muted text-muted-foreground'
                     )}
                   >
-                    {item.badge}
+                    {badgeValue}
                   </span>
                 )}
               </Link>

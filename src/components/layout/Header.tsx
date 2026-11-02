@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { useTransactions } from '@/features/transactions/hooks/useTransactions';
 
 const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
   '/': {
@@ -47,6 +48,7 @@ const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
 
 export function Header() {
   const pathname = usePathname();
+  const { openCreateModal } = useTransactions();
   const [todayFormatted, setTodayFormatted] = useState<string>('');
 
   useEffect(() => {
@@ -83,10 +85,8 @@ export function Header() {
         {/* Action Button: Quick Add Transaction */}
         <Button
           size="sm"
-          className="gap-1.5 shadow-sm font-medium"
-          onClick={() => {
-            alert('Add Transaction form will be implemented in the Transactions module phase.');
-          }}
+          className="gap-1.5 shadow-sm font-medium cursor-pointer"
+          onClick={openCreateModal}
         >
           <PlusCircle className="size-4" />
           <span className="hidden sm:inline">Add Transaction</span>

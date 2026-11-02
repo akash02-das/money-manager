@@ -1,18 +1,10 @@
-import { WalletCards } from 'lucide-react';
-import { ModulePlaceholder } from '@/components/shared/ModulePlaceholder';
+import { AccountsListView } from '@/features/accounts/components/AccountsListView';
+
+export const metadata = {
+  title: 'Accounts & Wallets — Money Manager',
+  description: 'Manage bank accounts, mobile wallets, and cash reserves in BDT.',
+};
 
 export default function AccountsPage() {
-  return (
-    <ModulePlaceholder
-      title="Accounts Management"
-      description="Track and manage bank accounts, mobile wallets (bKash/Nagad), cash, and credit cards."
-      icon={WalletCards}
-      plannedFeatures={[
-        'List all active accounts with live BDT balances',
-        'Create and edit accounts (Bank, Wallet, Cash, Card, Savings)',
-        'Archive and restore accounts',
-        'Filter by institution and account type',
-      ]}
-    />
-  );
+  return <AccountsListView />;
 }

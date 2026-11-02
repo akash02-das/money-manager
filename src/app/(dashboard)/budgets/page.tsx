@@ -1,18 +1,11 @@
-import { Target } from 'lucide-react';
-import { ModulePlaceholder } from '@/components/shared/ModulePlaceholder';
+import { BudgetsListView } from '@/features/budgets/components/BudgetsListView';
+
+export const metadata = {
+  title: 'Budgets & Spending Limits — Money Manager',
+  description: 'Set monthly category budgets and track live spending limits in BDT.',
+};
 
 export default function BudgetsPage() {
-  return (
-    <ModulePlaceholder
-      title="Budgets & Spending Limits"
-      description="Set monthly spending limits by category and track progress to avoid overspending."
-      icon={Target}
-      plannedFeatures={[
-        'Monthly category-based budget caps',
-        'Real-time spending progress bars',
-        'Remaining budget and over-budget warnings',
-        'Historical budget vs actual spending analysis',
-      ]}
-    />
-  );
+  return <BudgetsListView />;
 }
+

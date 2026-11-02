@@ -1,3 +1,5 @@
+'use client';
+
 import {
   Wallet,
   ArrowDownCircle,
@@ -9,16 +11,21 @@ import { SpendingTrendChart } from '@/features/dashboard/components/SpendingTren
 import { CategoryBreakdownCard } from '@/features/dashboard/components/CategoryBreakdownCard';
 import { RecentTransactionsCard } from '@/features/dashboard/components/RecentTransactionsCard';
 import { AccountsSnapshotCard } from '@/features/dashboard/components/AccountsSnapshotCard';
-import {
-  MOCK_ACCOUNTS,
-  MOCK_DASHBOARD_METRICS,
-  MOCK_TRANSACTIONS,
-} from '@/mocks/finance-data';
+import { MOCK_DASHBOARD_METRICS } from '@/mocks/finance-data';
+import { useAccounts } from '@/features/accounts/hooks/useAccounts';
+import { useTransactions } from '@/features/transactions/hooks/useTransactions';
 
 export function DashboardView() {
   const metrics = MOCK_DASHBOARD_METRICS;
-  const accounts = MOCK_ACCOUNTS;
-  const transactions = MOCK_TRANSACTIONS;
+  const { accounts, totalBalance } = useAccounts();
+  const { recentTransactions, totalIncome, totalExpense } = useTransactions();
+
+  // Active accounts for the dashboard snapshot
+  const activeAccounts = accounts.filter((a) => !a.isArchived);
+
+  // Dynamic net savings and savings rate
+  const netSavings = totalIncome - totalExpense;
+  const savingsRate = totalIncome > 0 ? (netSavings / totalIncome) * 100 : 0;
 
   return (
     <div className="space-y-6">
@@ -26,32 +33,32 @@ export function DashboardView() {
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Net Balance"
-          amount={metrics.totalBalance}
+          amount={totalBalance}
           trendPercent={12.4}
           trendLabel="vs last month"
           icon={Wallet}
           colorVariant="indigo"
         />
         <StatCard
-          title="October Income"
-          amount={metrics.monthlyIncome}
+          title="Total Inflow"
+          amount={totalIncome}
           trendPercent={8.2}
-          trendLabel="vs September"
+          trendLabel="vs last month"
           icon={ArrowDownCircle}
           colorVariant="emerald"
         />
         <StatCard
-          title="October Expenses"
-          amount={metrics.monthlyExpense}
+          title="Total Outflow"
+          amount={totalExpense}
           trendPercent={-4.5}
-          trendLabel="vs September"
+          trendLabel="vs last month"
           icon={ArrowUpCircle}
           colorVariant="rose"
         />
         <StatCard
           title="Net Savings"
-          amount={metrics.netSavings}
-          trendPercent={metrics.savingsRate}
+          amount={netSavings}
+          trendPercent={Number(savingsRate.toFixed(1))}
           trendLabel="savings rate"
           icon={PiggyBank}
           colorVariant="amber"
@@ -66,8 +73,8 @@ export function DashboardView() {
 
       {/* Activity & Accounts Section */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <RecentTransactionsCard transactions={transactions} />
-        <AccountsSnapshotCard accounts={accounts} />
+        <RecentTransactionsCard transactions={recentTransactions} />
+        <AccountsSnapshotCard accounts={activeAccounts} />
       </section>
     </div>
   );

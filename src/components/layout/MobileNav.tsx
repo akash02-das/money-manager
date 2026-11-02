@@ -15,10 +15,18 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import { useAccounts } from '@/features/accounts/hooks/useAccounts';
+import { useCategories } from '@/features/categories/hooks/useCategories';
+import { useTransactions } from '@/features/transactions/hooks/useTransactions';
+import { useBudgets } from '@/features/budgets/hooks/useBudgets';
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const { activeAccountsCount } = useAccounts();
+  const { activeCount: activeCategoriesCount } = useCategories();
+  const { totalCount: totalTransactionsCount } = useTransactions();
+  const { activeMonthBudgetsCount } = useBudgets();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -63,6 +71,17 @@ export function MobileNav() {
                 ? pathname === item.href
                 : pathname.startsWith(item.href);
 
+              const badgeValue =
+                item.href === '/accounts'
+                  ? activeAccountsCount
+                  : item.href === '/categories'
+                  ? activeCategoriesCount
+                  : item.href === '/transactions'
+                  ? totalTransactionsCount
+                  : item.href === '/budgets'
+                  ? activeMonthBudgetsCount
+                  : item.badge;
+
               return (
                 <Link
                   key={item.href}
@@ -86,7 +105,7 @@ export function MobileNav() {
                     />
                     <span>{item.title}</span>
                   </div>
-                  {item.badge && (
+                  {badgeValue !== undefined && (
                     <span
                       className={cn(
                         'rounded-full px-2 py-0.5 text-[10px] font-semibold',
@@ -95,7 +114,7 @@ export function MobileNav() {
                           : 'bg-muted text-muted-foreground'
                       )}
                     >
-                      {item.badge}
+                      {badgeValue}
                     </span>
                   )}
                 </Link>
