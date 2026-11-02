@@ -1,12 +1,37 @@
 import type { Category, CategoryType } from '@/types/finance';
-import { MOCK_CATEGORIES } from '@/mocks/finance-data';
+import { MOCK_CATEGORIES, MOCK_TRANSACTIONS } from '@/mocks/finance-data';
+import { INITIAL_MOCK_BUDGETS } from '@/features/budgets/api/budgets-service';
 import type { CategoryFormData } from '../schemas/category-schema';
 
 const STORAGE_KEY = 'money_manager_categories_v1';
+const TRANSACTIONS_STORAGE_KEY = 'money_manager_transactions_v1';
+const BUDGETS_STORAGE_KEY = 'money_manager_budgets_v1';
 
 export interface CreateCategoryDto extends CategoryFormData {}
 export interface UpdateCategoryDto extends Partial<CategoryFormData> {
   isArchived?: boolean;
+}
+
+function getStoredTransactionReferences(): { categoryId: string }[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(TRANSACTIONS_STORAGE_KEY);
+    if (!raw) return MOCK_TRANSACTIONS;
+    return JSON.parse(raw);
+  } catch {
+    return MOCK_TRANSACTIONS;
+  }
+}
+
+function getStoredBudgetReferences(): { categoryId: string }[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(BUDGETS_STORAGE_KEY);
+    if (!raw) return INITIAL_MOCK_BUDGETS;
+    return JSON.parse(raw);
+  } catch {
+    return INITIAL_MOCK_BUDGETS;
+  }
 }
 
 /**
@@ -102,13 +127,41 @@ export const categoriesService = {
     return this.update(id, { isArchived });
   },
 
+  getLinkedTransactionsCount(id: string): number {
+    const txs = getStoredTransactionReferences();
+    return txs.filter((t) => t.categoryId === id).length;
+  },
+
+  getLinkedBudgetsCount(id: string): number {
+    const budgets = getStoredBudgetReferences();
+    return budgets.filter((b) => b.categoryId === id).length;
+  },
+
   async delete(id: string): Promise<void> {
     await new Promise((res) => setTimeout(res, 80));
     const categories = getStoredCategories();
     const target = categories.find((c) => c.id === id);
 
-    if (target?.isDefault) {
+    if (!target) {
+      throw new Error(`Category with id ${id} not found.`);
+    }
+
+    if (target.isDefault) {
       throw new Error('Default system categories cannot be deleted. You can archive them instead.');
+    }
+
+    const linkedTxCount = this.getLinkedTransactionsCount(id);
+    if (linkedTxCount > 0) {
+      throw new Error(
+        `Cannot delete category "${target.name}" because it is linked to ${linkedTxCount} transaction(s). Please archive it instead to preserve your transaction reports.`
+      );
+    }
+
+    const linkedBudgetCount = this.getLinkedBudgetsCount(id);
+    if (linkedBudgetCount > 0) {
+      throw new Error(
+        `Cannot delete category "${target.name}" because it is linked to ${linkedBudgetCount} active budget cap(s). Please remove the budgets or archive this category instead.`
+      );
     }
 
     const filtered = categories.filter((c) => c.id !== id);

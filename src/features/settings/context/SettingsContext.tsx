@@ -10,6 +10,7 @@ import {
   settingsService,
   DEFAULT_USER_PROFILE,
   DEFAULT_PREFERENCES,
+  MONEY_MANAGER_STORAGE_SYNC_EVENT,
 } from '../api/settings-service';
 import type { CurrencyCode } from '@/types/finance';
 
@@ -71,6 +72,29 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     }
 
     loadSettings();
+  }, [applyTheme]);
+
+  // Synchronize with external storage updates / backup imports
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleSync = async () => {
+      try {
+        const refreshed = await settingsService.getSettings();
+        setProfile(refreshed.profile);
+        setPreferences(refreshed.preferences);
+        applyTheme(refreshed.preferences.theme);
+      } catch (err) {
+        console.error('Failed to sync settings from storage:', err);
+      }
+    };
+
+    window.addEventListener(MONEY_MANAGER_STORAGE_SYNC_EVENT, handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener(MONEY_MANAGER_STORAGE_SYNC_EVENT, handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
   }, [applyTheme]);
 
   // Listen for system appearance change if theme is 'system'
@@ -138,7 +162,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
           resolve({
             success: true,
-            message: `Restored ${result.accountsCount} accounts, ${result.transactionsCount} transactions, and ${result.budgetsCount} budgets.`,
+            message: `Restored ${result.accountsCount} accounts, ${result.categoriesCount} categories, ${result.transactionsCount} transactions, and ${result.budgetsCount} budgets.`,
           });
         } catch (err: unknown) {
           reject(err);

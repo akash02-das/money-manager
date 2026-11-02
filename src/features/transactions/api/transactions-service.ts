@@ -1,6 +1,7 @@
 import type { Transaction, Account, Category, TransactionType } from '@/types/finance';
 import { MOCK_TRANSACTIONS } from '@/mocks/finance-data';
 import type { TransactionFormData } from '../schemas/transaction-schema';
+import { roundCurrency } from '@/lib/formatters';
 
 const STORAGE_KEY = 'money_manager_transactions_v1';
 const ACCOUNTS_STORAGE_KEY = 'money_manager_accounts_v1';
@@ -45,6 +46,25 @@ function saveUpdatedAccounts(accounts: Account[]): void {
 }
 
 /**
+ * Safely normalizes transaction date inputs (YYYY-MM-DD or ISO strings).
+ * If a date-only string is provided, pins it to midday local time (12:00:00)
+ * so that UTC timezone offsets (e.g. Bangladesh UTC+6) never roll the day across month boundaries.
+ */
+function normalizeTransactionDate(dateInput?: string): string {
+  if (!dateInput) return new Date().toISOString();
+  if (dateInput.includes('T')) {
+    return new Date(dateInput).toISOString();
+  }
+  const parts = dateInput.split('-').map(Number);
+  if (parts.length === 3 && !parts.some(isNaN)) {
+    const [year, month, day] = parts;
+    const localMidday = new Date(year, month - 1, day, 12, 0, 0);
+    return localMidday.toISOString();
+  }
+  return new Date(dateInput).toISOString();
+}
+
+/**
  * Adjust account balances based on transaction type.
  * When reverse is true, the effect is inverted (used for editing or deleting).
  */
@@ -59,21 +79,21 @@ function adjustAccountBalances(
   if (tx.type === 'EXPENSE') {
     const account = accountsCopy.find((a) => a.id === tx.accountId);
     if (account) {
-      account.balance -= tx.amount * multiplier;
+      account.balance = roundCurrency(account.balance - tx.amount * multiplier);
     }
   } else if (tx.type === 'INCOME') {
     const account = accountsCopy.find((a) => a.id === tx.accountId);
     if (account) {
-      account.balance += tx.amount * multiplier;
+      account.balance = roundCurrency(account.balance + tx.amount * multiplier);
     }
   } else if (tx.type === 'TRANSFER' && tx.toAccountId) {
     const fromAccount = accountsCopy.find((a) => a.id === tx.accountId);
     const toAccount = accountsCopy.find((a) => a.id === tx.toAccountId);
     if (fromAccount) {
-      fromAccount.balance -= tx.amount * multiplier;
+      fromAccount.balance = roundCurrency(fromAccount.balance - tx.amount * multiplier);
     }
     if (toAccount) {
-      toAccount.balance += tx.amount * multiplier;
+      toAccount.balance = roundCurrency(toAccount.balance + tx.amount * multiplier);
     }
   }
 
@@ -127,7 +147,7 @@ export const transactionsService = {
       amount: Number(dto.amount),
       type: dto.type,
       description: dto.description,
-      date: new Date(dto.date).toISOString(),
+      date: normalizeTransactionDate(dto.date),
       categoryId: dto.categoryId || '',
       accountId: dto.accountId,
       toAccountId: dto.type === 'TRANSFER' ? dto.toAccountId : undefined,
@@ -172,7 +192,7 @@ export const transactionsService = {
       amount: dto.amount !== undefined ? Number(dto.amount) : oldTx.amount,
       type: dto.type || oldTx.type,
       description: dto.description || oldTx.description,
-      date: dto.date ? new Date(dto.date).toISOString() : oldTx.date,
+      date: dto.date ? normalizeTransactionDate(dto.date) : oldTx.date,
       categoryId: dto.type === 'TRANSFER' ? '' : (dto.categoryId ?? oldTx.categoryId),
       accountId: dto.accountId || oldTx.accountId,
       toAccountId: dto.type === 'TRANSFER' ? (dto.toAccountId ?? oldTx.toAccountId) : undefined,

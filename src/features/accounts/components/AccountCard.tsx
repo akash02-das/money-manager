@@ -166,12 +166,22 @@ export function AccountCard({
         <div className="mt-5 pt-3 border-t border-border/50 flex items-end justify-between">
           <div>
             <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-              {isCreditCard ? 'Outstanding Balance' : 'Current Balance'}
+              {isCreditCard
+                ? account.balance < 0
+                  ? 'Outstanding Liability'
+                  : account.balance > 0
+                  ? 'Overpaid Credit'
+                  : 'No Dues Owed'
+                : 'Current Balance'}
             </p>
             <div
               className={cn(
                 'text-xl font-bold tracking-tight',
-                isNegative ? 'text-rose-600 dark:text-rose-400' : 'text-foreground'
+                isNegative
+                  ? 'text-rose-600 dark:text-rose-400'
+                  : isCreditCard && account.balance > 0
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-foreground'
               )}
             >
               {formatCurrency(account.balance, account.currency)}

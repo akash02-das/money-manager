@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
@@ -52,6 +52,7 @@ export function TransactionFormDialog({
 
   const activeAccounts = accounts.filter((a) => !a.isArchived);
   const activeCategories = categories.filter((c) => !c.isArchived);
+  const defaultExpenseCat = activeCategories.find((c) => c.type === 'EXPENSE');
 
   const defaultDateStr = format(new Date(), 'yyyy-MM-dd');
 
@@ -72,18 +73,58 @@ export function TransactionFormDialog({
       date: defaultDateStr,
       accountId: activeAccounts[0]?.id || '',
       toAccountId: '',
-      categoryId: activeCategories[0]?.id || '',
+      categoryId: defaultExpenseCat?.id || '',
       notes: '',
     },
   });
 
   const selectedType = watch('type');
   const selectedAccountId = watch('accountId');
+  const selectedCategoryId = watch('categoryId');
 
   // Filter categories by selected transaction type
-  const matchingCategories = activeCategories.filter(
-    (c) => c.type === (selectedType === 'INCOME' ? 'INCOME' : 'EXPENSE')
-  );
+  const matchingCategories = useMemo(() => {
+    return activeCategories.filter(
+      (c) => c.type === (selectedType === 'INCOME' ? 'INCOME' : 'EXPENSE')
+    );
+  }, [activeCategories, selectedType]);
+
+  // Synchronize categoryId whenever selectedType changes to prevent cross-type leakage
+  useEffect(() => {
+    if (!open) return;
+
+    if (selectedType === 'TRANSFER') {
+      if (selectedCategoryId) {
+        setValue('categoryId', '', { shouldValidate: true });
+      }
+      return;
+    }
+
+    const isValidMatch = matchingCategories.some((c) => c.id === selectedCategoryId);
+    if (!isValidMatch && matchingCategories.length > 0) {
+      setValue('categoryId', matchingCategories[0].id, { shouldValidate: true });
+    }
+  }, [open, selectedType, selectedCategoryId, matchingCategories, setValue]);
+
+  // Seamless handler for switching transaction types
+  const handleTypeChange = (newType: TransactionType) => {
+    setValue('type', newType, { shouldValidate: true, shouldDirty: true });
+
+    if (newType === 'TRANSFER') {
+      setValue('categoryId', '', { shouldValidate: true, shouldDirty: true });
+      const eligibleAccounts = activeAccounts.filter((a) => a.id !== selectedAccountId);
+      if (eligibleAccounts.length > 0) {
+        setValue('toAccountId', eligibleAccounts[0].id, { shouldValidate: true, shouldDirty: true });
+      }
+    } else {
+      setValue('toAccountId', '', { shouldValidate: true, shouldDirty: true });
+      const validCategories = activeCategories.filter((c) => c.type === newType);
+      const isCurrentValid = validCategories.some((c) => c.id === selectedCategoryId);
+      if (!isCurrentValid && validCategories.length > 0) {
+        setValue('categoryId', validCategories[0].id, { shouldValidate: true, shouldDirty: true });
+      }
+    }
+  };
 
   useEffect(() => {
     if (open) {
@@ -106,6 +147,7 @@ export function TransactionFormDialog({
           notes: transactionToEdit.notes || '',
         });
       } else {
+        const initialExpCat = activeCategories.find((c) => c.type === 'EXPENSE');
         reset({
           type: 'EXPENSE',
           amount: 0,
@@ -113,12 +155,12 @@ export function TransactionFormDialog({
           date: defaultDateStr,
           accountId: activeAccounts[0]?.id || '',
           toAccountId: '',
-          categoryId: matchingCategories[0]?.id || '',
+          categoryId: initialExpCat?.id || '',
           notes: '',
         });
       }
     }
-  }, [open, transactionToEdit, reset, defaultDateStr]);
+  }, [open, transactionToEdit, reset, defaultDateStr, activeAccounts, activeCategories]);
 
   const handleFormSubmit = async (values: TransactionFormData) => {
     try {
@@ -153,11 +195,7 @@ export function TransactionFormDialog({
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setValue('type', 'EXPENSE');
-                  const firstExpCat = activeCategories.find((c) => c.type === 'EXPENSE');
-                  if (firstExpCat) setValue('categoryId', firstExpCat.id);
-                }}
+                onClick={() => handleTypeChange('EXPENSE')}
                 className={cn(
                   'flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer',
                   selectedType === 'EXPENSE'
@@ -171,11 +209,7 @@ export function TransactionFormDialog({
 
               <button
                 type="button"
-                onClick={() => {
-                  setValue('type', 'INCOME');
-                  const firstIncCat = activeCategories.find((c) => c.type === 'INCOME');
-                  if (firstIncCat) setValue('categoryId', firstIncCat.id);
-                }}
+                onClick={() => handleTypeChange('INCOME')}
                 className={cn(
                   'flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer',
                   selectedType === 'INCOME'
@@ -189,10 +223,7 @@ export function TransactionFormDialog({
 
               <button
                 type="button"
-                onClick={() => {
-                  setValue('type', 'TRANSFER');
-                  setValue('categoryId', '');
-                }}
+                onClick={() => handleTypeChange('TRANSFER')}
                 className={cn(
                   'flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer',
                   selectedType === 'TRANSFER'
@@ -365,6 +396,7 @@ export function TransactionFormDialog({
                   name="categoryId"
                   render={({ field }) => (
                     <Select
+                      key={`tx-cat-select-${selectedType}`}
                       value={field.value || ''}
                       onValueChange={(val) => {
                         if (val) field.onChange(val);

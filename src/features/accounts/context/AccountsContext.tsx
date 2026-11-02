@@ -4,6 +4,8 @@ import React, { createContext, useContext, useEffect, useState, useMemo, useCall
 import type { Account, AccountType } from '@/types/finance';
 import { MOCK_ACCOUNTS } from '@/mocks/finance-data';
 import { accountsService, type CreateAccountDto, type UpdateAccountDto } from '../api/accounts-service';
+import { MONEY_MANAGER_STORAGE_SYNC_EVENT } from '@/features/settings/api/settings-service';
+import { roundCurrency } from '@/lib/formatters';
 
 interface AccountsContextValue {
   accounts: Account[];
@@ -48,6 +50,22 @@ export function AccountsProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchAccounts();
+  }, [fetchAccounts]);
+
+  // Synchronize accounts state on backup restore or storage changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleSync = () => {
+      fetchAccounts();
+    };
+
+    window.addEventListener(MONEY_MANAGER_STORAGE_SYNC_EVENT, handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener(MONEY_MANAGER_STORAGE_SYNC_EVENT, handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
   }, [fetchAccounts]);
 
   const createAccount = async (data: CreateAccountDto): Promise<Account> => {
@@ -113,10 +131,10 @@ export function AccountsProvider({ children }: { children: React.ReactNode }) {
     });
 
     return {
-      totalBalance: total,
-      bankAndSavingsTotal: bankAndSavings,
-      walletsAndCashTotal: walletsAndCash,
-      creditCardTotal: creditCard,
+      totalBalance: roundCurrency(total),
+      bankAndSavingsTotal: roundCurrency(bankAndSavings),
+      walletsAndCashTotal: roundCurrency(walletsAndCash),
+      creditCardTotal: roundCurrency(creditCard),
       activeAccountsCount: active.length,
       archivedAccountsCount: archived.length,
     };

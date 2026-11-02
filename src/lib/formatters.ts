@@ -72,3 +72,29 @@ export function formatPercentage(value: number, includeSign: boolean = true): st
   const sign = includeSign && value > 0 ? '+' : '';
   return `${sign}${value.toFixed(1)}%`;
 }
+
+/**
+ * Extract the local calendar month key ('yyyy-MM') from an ISO date string,
+ * correctly taking the local timezone (e.g. Bangladesh Standard Time GMT+6) into account
+ * instead of raw UTC string slicing.
+ */
+export function getLocalMonthKey(dateString: string): string {
+  try {
+    const date = parseISO(dateString);
+    if (!isValid(date)) {
+      return dateString.slice(0, 7);
+    }
+    return format(date, 'yyyy-MM');
+  } catch {
+    return dateString.slice(0, 7);
+  }
+}
+
+/**
+ * Safely rounds a financial amount to 2 decimal places to avoid IEEE 754 floating-point drift.
+ * (e.g. 0.1 + 0.2 = 0.30000000000000004 -> 0.30)
+ */
+export function roundCurrency(amount: number): number {
+  return Math.round((amount + Number.EPSILON) * 100) / 100;
+}
+

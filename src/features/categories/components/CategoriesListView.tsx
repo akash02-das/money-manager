@@ -13,6 +13,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCategories } from '../hooks/useCategories';
+import { useTransactions } from '@/features/transactions/hooks/useTransactions';
+import { useBudgets } from '@/features/budgets/hooks/useBudgets';
 import { CategoryCard } from './CategoryCard';
 import { CategoryFormDialog } from './CategoryFormDialog';
 import { CategoryDeleteDialog } from './CategoryDeleteDialog';
@@ -39,6 +41,9 @@ export function CategoriesListView() {
     resetToDefault,
   } = useCategories();
 
+  const { transactions } = useTransactions();
+  const { budgets } = useBudgets();
+
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<FilterTab>('ALL');
@@ -48,6 +53,17 @@ export function CategoriesListView() {
   const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // Count linked transactions and budgets for category staged for deletion
+  const categoryLinkedTxCount = useMemo(() => {
+    if (!categoryToDelete) return 0;
+    return transactions.filter((t) => t.categoryId === categoryToDelete.id).length;
+  }, [categoryToDelete, transactions]);
+
+  const categoryLinkedBudgetCount = useMemo(() => {
+    if (!categoryToDelete) return 0;
+    return budgets.filter((b) => b.categoryId === categoryToDelete.id).length;
+  }, [categoryToDelete, budgets]);
 
   // Filtered categories
   const filteredCategories = useMemo(() => {
@@ -100,8 +116,12 @@ export function CategoriesListView() {
 
   const handleConfirmDelete = async () => {
     if (categoryToDelete) {
-      await deleteCategory(categoryToDelete.id);
-      setCategoryToDelete(null);
+      try {
+        await deleteCategory(categoryToDelete.id);
+        setCategoryToDelete(null);
+      } catch (err: unknown) {
+        console.error('Delete category failed:', err);
+      }
     }
   };
 
@@ -295,6 +315,8 @@ export function CategoriesListView() {
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         category={categoryToDelete}
+        linkedTransactionsCount={categoryLinkedTxCount}
+        linkedBudgetsCount={categoryLinkedBudgetCount}
         onConfirmDelete={handleConfirmDelete}
         onArchiveInstead={handleArchiveInstead}
       />

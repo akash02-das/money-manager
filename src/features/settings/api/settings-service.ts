@@ -4,11 +4,16 @@ import type {
   SettingsState,
 } from '../schemas/settings-schema';
 import {
+  parseAndValidateBackupJSON,
+} from '../schemas/backup-schema';
+import {
   MOCK_ACCOUNTS,
   MOCK_CATEGORIES,
   MOCK_TRANSACTIONS,
 } from '@/mocks/finance-data';
 import { INITIAL_MOCK_BUDGETS } from '@/features/budgets/api/budgets-service';
+
+export const MONEY_MANAGER_STORAGE_SYNC_EVENT = 'money_manager_storage_sync';
 
 const SETTINGS_STORAGE_KEY = 'money_manager_settings_v1';
 const ACCOUNTS_STORAGE_KEY = 'money_manager_accounts_v1';
@@ -150,11 +155,12 @@ export const settingsService = {
   },
 
   /**
-   * Import data from an exported JSON file string
+   * Import data from an exported JSON file string after rigorous schema validation
    */
   async importAllData(jsonString: string): Promise<{
     success: boolean;
     accountsCount: number;
+    categoriesCount: number;
     transactionsCount: number;
     budgetsCount: number;
   }> {
@@ -163,52 +169,41 @@ export const settingsService = {
     }
 
     try {
-      const data = JSON.parse(jsonString);
+      // Rigorous validation using Zod schema
+      const data = parseAndValidateBackupJSON(jsonString);
 
-      if (!data || typeof data !== 'object') {
-        throw new Error('Invalid JSON structure');
-      }
-
-      let accountsCount = 0;
-      let transactionsCount = 0;
-      let budgetsCount = 0;
-
-      // Settings restore
+      // 1. Settings restore (if provided)
       if (data.settings) {
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(data.settings));
       }
 
-      // Accounts restore
-      if (Array.isArray(data.accounts)) {
-        localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(data.accounts));
-        accountsCount = data.accounts.length;
-      }
+      // 2. Accounts restore
+      localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(data.accounts));
 
-      // Categories restore
-      if (Array.isArray(data.categories)) {
-        localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(data.categories));
-      }
+      // 3. Categories restore
+      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(data.categories));
 
-      // Transactions restore
-      if (Array.isArray(data.transactions)) {
-        localStorage.setItem(TRANSACTIONS_STORAGE_KEY, JSON.stringify(data.transactions));
-        transactionsCount = data.transactions.length;
-      }
+      // 4. Transactions restore
+      localStorage.setItem(TRANSACTIONS_STORAGE_KEY, JSON.stringify(data.transactions));
 
-      // Budgets restore
-      if (Array.isArray(data.budgets)) {
-        localStorage.setItem(BUDGETS_STORAGE_KEY, JSON.stringify(data.budgets));
-        budgetsCount = data.budgets.length;
-      }
+      // 5. Budgets restore
+      localStorage.setItem(BUDGETS_STORAGE_KEY, JSON.stringify(data.budgets));
+
+      // 6. Broadcast storage sync event so all in-memory providers update immediately
+      window.dispatchEvent(new CustomEvent(MONEY_MANAGER_STORAGE_SYNC_EVENT));
 
       return {
         success: true,
-        accountsCount,
-        transactionsCount,
-        budgetsCount,
+        accountsCount: data.accounts.length,
+        categoriesCount: data.categories.length,
+        transactionsCount: data.transactions.length,
+        budgetsCount: data.budgets.length,
       };
     } catch (err: unknown) {
       console.error('Import failed:', err);
+      if (err instanceof Error) {
+        throw err;
+      }
       throw new Error('Failed to parse and import backup file. Ensure it is a valid Money Manager export.');
     }
   },
@@ -237,5 +232,8 @@ export const settingsService = {
     localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(MOCK_CATEGORIES));
     localStorage.setItem(TRANSACTIONS_STORAGE_KEY, JSON.stringify(MOCK_TRANSACTIONS));
     localStorage.setItem(BUDGETS_STORAGE_KEY, JSON.stringify(INITIAL_MOCK_BUDGETS));
+
+    // Broadcast storage sync event
+    window.dispatchEvent(new CustomEvent(MONEY_MANAGER_STORAGE_SYNC_EVENT));
   },
 };

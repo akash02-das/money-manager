@@ -77,10 +77,12 @@ export function AccountFormDialog({
   useEffect(() => {
     if (open) {
       if (accountToEdit) {
+        const isCreditCard = accountToEdit.type === 'CREDIT_CARD';
         reset({
           name: accountToEdit.name,
           type: accountToEdit.type,
-          balance: accountToEdit.balance,
+          // Show positive magnitude of debt in the input for user clarity
+          balance: isCreditCard ? Math.abs(accountToEdit.balance) : accountToEdit.balance,
           currency: 'BDT',
           institution: accountToEdit.institution || '',
           accountNumberLast4: accountToEdit.accountNumberLast4 || '',
@@ -95,7 +97,16 @@ export function AccountFormDialog({
   const handleFormSubmit = async (values: AccountFormData) => {
     try {
       setIsSubmitting(true);
-      await onSubmit(values);
+      // Consistent credit card convention: positive debt entered is normalized to negative stored balance
+      const normalizedBalance =
+        values.type === 'CREDIT_CARD'
+          ? (values.balance > 0 ? -values.balance : values.balance)
+          : values.balance;
+
+      await onSubmit({
+        ...values,
+        balance: normalizedBalance,
+      });
       onOpenChange(false);
       reset(DEFAULT_FORM_VALUES);
     } catch (error) {
@@ -167,10 +178,10 @@ export function AccountFormDialog({
               )}
             </div>
 
-            {/* Current Balance */}
+            {/* Current Balance / Outstanding Debt */}
             <div className="space-y-1.5">
               <Label htmlFor="account-balance">
-                {selectedType === 'CREDIT_CARD' ? 'Outstanding Amount (৳)' : 'Current Balance (৳) *'}
+                {selectedType === 'CREDIT_CARD' ? 'Outstanding Debt Owed (৳) *' : 'Current Balance (৳) *'}
               </Label>
               <Input
                 id="account-balance"
@@ -180,6 +191,11 @@ export function AccountFormDialog({
                 {...register('balance', { valueAsNumber: true })}
                 aria-invalid={Boolean(errors.balance)}
               />
+              {selectedType === 'CREDIT_CARD' && !errors.balance && (
+                <p className="text-[11px] text-muted-foreground leading-tight">
+                  Stored as liability (-৳) to deduct from net balance. Enter 0 if no dues.
+                </p>
+              )}
               {errors.balance && (
                 <p className="text-xs text-rose-500">{errors.balance.message}</p>
               )}

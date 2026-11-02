@@ -14,10 +14,18 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useSettings } from '../hooks/useSettings';
+import { useAccounts } from '@/features/accounts/hooks/useAccounts';
+import { useCategories } from '@/features/categories/hooks/useCategories';
+import { useTransactions } from '@/features/transactions/hooks/useTransactions';
+import { useBudgets } from '@/features/budgets/hooks/useBudgets';
 import { ResetConfirmationDialog } from './ResetConfirmationDialog';
 
 export function DataManagementCard() {
   const { exportData, importData } = useSettings();
+  const { refreshAccounts } = useAccounts();
+  const { refreshCategories } = useCategories();
+  const { refreshTransactions } = useTransactions();
+  const { refreshBudgets } = useBudgets();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isExporting, setIsExporting] = useState(false);
@@ -55,6 +63,13 @@ export function DataManagementCard() {
     try {
       setIsImporting(true);
       const res = await importData(file);
+
+      // Explicitly refresh all contexts in sequence to ensure atomic in-memory synchronization
+      await refreshAccounts();
+      await refreshCategories();
+      await refreshTransactions();
+      await refreshBudgets();
+
       setStatusMessage({
         type: 'success',
         text: `Data successfully imported! ${res.message}`,

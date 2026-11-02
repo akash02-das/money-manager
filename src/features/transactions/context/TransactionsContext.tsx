@@ -11,6 +11,8 @@ import {
 } from '../api/transactions-service';
 import { useAccounts } from '@/features/accounts/hooks/useAccounts';
 import { useCategories } from '@/features/categories/hooks/useCategories';
+import { MONEY_MANAGER_STORAGE_SYNC_EVENT } from '@/features/settings/api/settings-service';
+import { roundCurrency } from '@/lib/formatters';
 
 interface TransactionsContextValue {
   transactions: Transaction[];
@@ -68,6 +70,22 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     fetchTransactions();
+  }, [fetchTransactions]);
+
+  // Synchronize transactions state on backup restore or storage changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleSync = () => {
+      fetchTransactions();
+    };
+
+    window.addEventListener(MONEY_MANAGER_STORAGE_SYNC_EVENT, handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener(MONEY_MANAGER_STORAGE_SYNC_EVENT, handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
   }, [fetchTransactions]);
 
   const createTransaction = async (data: CreateTransactionDto): Promise<Transaction> => {
@@ -134,9 +152,9 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
     });
 
     return {
-      totalIncome: income,
-      totalExpense: expense,
-      netCashFlow: income - expense,
+      totalIncome: roundCurrency(income),
+      totalExpense: roundCurrency(expense),
+      netCashFlow: roundCurrency(income - expense),
       totalCount: transactions.length,
       recentTransactions: transactions.slice(0, 5),
     };

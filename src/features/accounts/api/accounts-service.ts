@@ -1,12 +1,24 @@
 import type { Account, CurrencyCode, AccountType } from '@/types/finance';
-import { MOCK_ACCOUNTS } from '@/mocks/finance-data';
+import { MOCK_ACCOUNTS, MOCK_TRANSACTIONS } from '@/mocks/finance-data';
 import type { AccountFormData } from '../schemas/account-schema';
 
 const STORAGE_KEY = 'money_manager_accounts_v1';
+const TRANSACTIONS_STORAGE_KEY = 'money_manager_transactions_v1';
 
 export interface CreateAccountDto extends AccountFormData {}
 export interface UpdateAccountDto extends Partial<AccountFormData> {
   isArchived?: boolean;
+}
+
+function getStoredTransactionReferences(): { accountId: string; toAccountId?: string }[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(TRANSACTIONS_STORAGE_KEY);
+    if (!raw) return MOCK_TRANSACTIONS;
+    return JSON.parse(raw);
+  } catch {
+    return MOCK_TRANSACTIONS;
+  }
 }
 
 /**
@@ -24,7 +36,25 @@ function getStoredAccounts(): Account[] {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(MOCK_ACCOUNTS));
       return MOCK_ACCOUNTS;
     }
-    return JSON.parse(raw) as Account[];
+    const parsed = JSON.parse(raw) as Account[];
+
+    // Normalization & Migration check:
+    // Ensure all CREDIT_CARD accounts strictly adhere to the negative liability convention.
+    // If any legacy credit card was stored with positive balance, normalize to -Math.abs(balance).
+    let hasChanges = false;
+    const normalized = parsed.map((acc) => {
+      if (acc.type === 'CREDIT_CARD' && acc.balance > 0) {
+        hasChanges = true;
+        return { ...acc, balance: -Math.abs(acc.balance) };
+      }
+      return acc;
+    });
+
+    if (hasChanges) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+    }
+
+    return normalized;
   } catch (error) {
     console.error('Failed to load accounts from storage:', error);
     return MOCK_ACCOUNTS;
@@ -67,11 +97,16 @@ export const accountsService = {
     await new Promise((res) => setTimeout(res, 100));
     const accounts = getStoredAccounts();
 
+    const rawBalance = Number(dto.balance);
+    // Enforce credit card negative liability convention
+    const normalizedBalance =
+      dto.type === 'CREDIT_CARD' && rawBalance > 0 ? -rawBalance : rawBalance;
+
     const newAccount: Account = {
       id: `acc-${Date.now()}`,
       name: dto.name,
       type: dto.type,
-      balance: Number(dto.balance),
+      balance: normalizedBalance,
       currency: (dto.currency as CurrencyCode) || 'BDT',
       institution: dto.institution || undefined,
       accountNumberLast4: dto.accountNumberLast4 || undefined,
@@ -93,12 +128,21 @@ export const accountsService = {
       throw new Error(`Account with id ${id} not found.`);
     }
 
+    const current = accounts[index];
+    const targetType = dto.type || current.type;
+    let finalBalance = current.balance;
+
+    if (dto.balance !== undefined) {
+      const rawNum = Number(dto.balance);
+      finalBalance = targetType === 'CREDIT_CARD' && rawNum > 0 ? -rawNum : rawNum;
+    }
+
     const updatedAccount: Account = {
-      ...accounts[index],
+      ...current,
       ...dto,
-      balance: dto.balance !== undefined ? Number(dto.balance) : accounts[index].balance,
-      institution: dto.institution !== undefined ? dto.institution || undefined : accounts[index].institution,
-      accountNumberLast4: dto.accountNumberLast4 !== undefined ? dto.accountNumberLast4 || undefined : accounts[index].accountNumberLast4,
+      balance: finalBalance,
+      institution: dto.institution !== undefined ? dto.institution || undefined : current.institution,
+      accountNumberLast4: dto.accountNumberLast4 !== undefined ? dto.accountNumberLast4 || undefined : current.accountNumberLast4,
     };
 
     accounts[index] = updatedAccount;
@@ -110,9 +154,27 @@ export const accountsService = {
     return this.update(id, { isArchived });
   },
 
+  getLinkedTransactionsCount(id: string): number {
+    const txs = getStoredTransactionReferences();
+    return txs.filter((t) => t.accountId === id || t.toAccountId === id).length;
+  },
+
   async delete(id: string): Promise<void> {
     await new Promise((res) => setTimeout(res, 100));
     const accounts = getStoredAccounts();
+    const target = accounts.find((a) => a.id === id);
+
+    if (!target) {
+      throw new Error(`Account with id ${id} not found.`);
+    }
+
+    const linkedCount = this.getLinkedTransactionsCount(id);
+    if (linkedCount > 0) {
+      throw new Error(
+        `Cannot delete account "${target.name}" because it is linked to ${linkedCount} transaction(s). Please archive it instead to preserve your financial ledger.`
+      );
+    }
+
     const filtered = accounts.filter((a) => a.id !== id);
     setStoredAccounts(filtered);
   },

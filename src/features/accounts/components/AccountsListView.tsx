@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useAccounts } from '../hooks/useAccounts';
+import { useTransactions } from '@/features/transactions/hooks/useTransactions';
 import { AccountCard } from './AccountCard';
 import { AccountFormDialog } from './AccountFormDialog';
 import { AccountDeleteDialog } from './AccountDeleteDialog';
@@ -42,6 +43,8 @@ export function AccountsListView() {
     resetToDefault,
   } = useAccounts();
 
+  const { transactions } = useTransactions();
+
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<FilterTab>('ALL');
@@ -51,6 +54,14 @@ export function AccountsListView() {
   const [accountToEdit, setAccountToEdit] = useState<Account | null>(null);
   const [accountToDelete, setAccountToDelete] = useState<Account | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // Count linked transactions for the account staged for deletion
+  const accountLinkedCount = useMemo(() => {
+    if (!accountToDelete) return 0;
+    return transactions.filter(
+      (t) => t.accountId === accountToDelete.id || t.toAccountId === accountToDelete.id
+    ).length;
+  }, [accountToDelete, transactions]);
 
   // Filtered accounts list
   const filteredAccounts = useMemo(() => {
@@ -106,8 +117,12 @@ export function AccountsListView() {
 
   const handleConfirmDelete = async () => {
     if (accountToDelete) {
-      await deleteAccount(accountToDelete.id);
-      setAccountToDelete(null);
+      try {
+        await deleteAccount(accountToDelete.id);
+        setAccountToDelete(null);
+      } catch (err: unknown) {
+        console.error('Delete account failed:', err);
+      }
     }
   };
 
@@ -339,6 +354,7 @@ export function AccountsListView() {
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         account={accountToDelete}
+        linkedTransactionsCount={accountLinkedCount}
         onConfirmDelete={handleConfirmDelete}
         onArchiveInstead={handleArchiveInstead}
       />

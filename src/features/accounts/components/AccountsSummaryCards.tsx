@@ -95,23 +95,36 @@ export function AccountsSummaryCards({
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Credit Card Owed
+                Credit Card Liability
               </p>
               <div
                 className={cn(
                   'text-2xl font-bold tracking-tight mt-1',
                   creditCardTotal < 0
                     ? 'text-rose-600 dark:text-rose-400'
+                    : creditCardTotal > 0
+                    ? 'text-emerald-600 dark:text-emerald-400'
                     : 'text-foreground'
                 )}
               >
                 {formatCurrency(Math.abs(creditCardTotal), 'BDT')}
               </div>
               <p className="text-[11px] text-muted-foreground mt-1">
-                {creditCardTotal < 0 ? 'Current liability to pay' : 'No outstanding dues'}
+                {creditCardTotal < 0
+                  ? 'Total outstanding debt to pay'
+                  : creditCardTotal > 0
+                  ? 'Overpaid credit balance'
+                  : 'No outstanding credit dues'}
               </p>
             </div>
-            <div className="p-2.5 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+            <div
+              className={cn(
+                'p-2.5 rounded-xl',
+                creditCardTotal < 0
+                  ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                  : 'bg-muted text-muted-foreground'
+              )}
+            >
               <CreditCard className="size-5" />
             </div>
           </div>

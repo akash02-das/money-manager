@@ -62,6 +62,17 @@ export function TransactionsFilters({
   onResetFilters,
   hasActiveFilters,
 }: TransactionsFiltersProps) {
+  // Filter categories to match selected transaction type
+  const matchingCategories = React.useMemo(() => {
+    if (selectedType === 'EXPENSE') {
+      return categories.filter((c) => c.type === 'EXPENSE');
+    }
+    if (selectedType === 'INCOME') {
+      return categories.filter((c) => c.type === 'INCOME');
+    }
+    return categories;
+  }, [categories, selectedType]);
+
   return (
     <div className="space-y-3 pt-2">
       {/* Top Row: Type Pills & Search */}
@@ -167,15 +178,27 @@ export function TransactionsFilters({
         {/* Category Filter */}
         <div className="w-44">
           <Select
+            key={`filter-cat-${selectedType}`}
             value={selectedCategoryId || 'all'}
             onValueChange={(val) => onCategoryChange(val === 'all' ? '' : val || '')}
+            disabled={selectedType === 'TRANSFER'}
           >
             <SelectTrigger className="w-full h-8 text-xs">
-              <SelectValue placeholder="All Categories" />
+              <SelectValue
+                placeholder={
+                  selectedType === 'TRANSFER' ? 'N/A for Transfers' : 'All Categories'
+                }
+              />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {categories.map((cat) => (
+              <SelectItem value="all">
+                {selectedType === 'EXPENSE'
+                  ? 'All Expense Categories'
+                  : selectedType === 'INCOME'
+                  ? 'All Income Categories'
+                  : 'All Categories'}
+              </SelectItem>
+              {matchingCategories.map((cat) => (
                 <SelectItem key={cat.id} value={cat.id}>
                   {cat.name}
                 </SelectItem>

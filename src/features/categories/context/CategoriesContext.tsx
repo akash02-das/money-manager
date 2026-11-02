@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useMemo, useCall
 import type { Category, CategoryType } from '@/types/finance';
 import { MOCK_CATEGORIES } from '@/mocks/finance-data';
 import { categoriesService, type CreateCategoryDto, type UpdateCategoryDto } from '../api/categories-service';
+import { MONEY_MANAGER_STORAGE_SYNC_EVENT } from '@/features/settings/api/settings-service';
 
 interface CategoriesContextValue {
   categories: Category[];
@@ -48,6 +49,22 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     fetchCategories();
+  }, [fetchCategories]);
+
+  // Synchronize categories state on backup restore or storage changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleSync = () => {
+      fetchCategories();
+    };
+
+    window.addEventListener(MONEY_MANAGER_STORAGE_SYNC_EVENT, handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener(MONEY_MANAGER_STORAGE_SYNC_EVENT, handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
   }, [fetchCategories]);
 
   const createCategory = async (data: CreateCategoryDto): Promise<Category> => {

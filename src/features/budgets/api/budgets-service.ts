@@ -9,35 +9,35 @@ export const INITIAL_MOCK_BUDGETS: Budget[] = [
     categoryId: 'cat-exp-1', // Housing & Rent
     month: '2026-10',
     limit: 35000,
-    spent: 32000,
+    spent: 0,
   },
   {
     id: 'bgt-2',
     categoryId: 'cat-exp-2', // Groceries & Market
     month: '2026-10',
     limit: 15000,
-    spent: 8750,
+    spent: 0,
   },
   {
     id: 'bgt-3',
     categoryId: 'cat-exp-3', // Utilities & Internet
     month: '2026-10',
     limit: 6000,
-    spent: 3850,
+    spent: 0,
   },
   {
     id: 'bgt-4',
     categoryId: 'cat-exp-4', // Dining & Cafes
     month: '2026-10',
     limit: 2500,
-    spent: 1850,
+    spent: 0,
   },
   {
     id: 'bgt-5',
     categoryId: 'cat-exp-5', // Transportation
     month: '2026-10',
     limit: 3000,
-    spent: 1450,
+    spent: 0,
   },
 ];
 

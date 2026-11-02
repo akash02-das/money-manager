@@ -256,6 +256,14 @@ export function TransactionsListView() {
         onTypeChange={(type) => {
           setSelectedType(type);
           setCurrentPage(1);
+          if (type === 'TRANSFER') {
+            setSelectedCategoryId('');
+          } else if (type !== 'ALL' && selectedCategoryId) {
+            const currentCat = categories.find((c) => c.id === selectedCategoryId);
+            if (currentCat && currentCat.type !== type) {
+              setSelectedCategoryId('');
+            }
+          }
         }}
         selectedAccountId={selectedAccountId}
         onAccountChange={(accId) => {

@@ -11,6 +11,8 @@ import {
 } from '../api/budgets-service';
 import { useTransactions } from '@/features/transactions/hooks/useTransactions';
 import { useCategories } from '@/features/categories/hooks/useCategories';
+import { MONEY_MANAGER_STORAGE_SYNC_EVENT } from '@/features/settings/api/settings-service';
+import { getLocalMonthKey, roundCurrency } from '@/lib/formatters';
 
 export type BudgetHealthStatus = 'ON_TRACK' | 'WARNING' | 'OVER_BUDGET';
 
@@ -78,10 +80,26 @@ export function BudgetsProvider({ children }: { children: React.ReactNode }) {
     fetchBudgets();
   }, [fetchBudgets]);
 
+  // Synchronize budgets state on backup restore or storage changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleSync = () => {
+      fetchBudgets();
+    };
+
+    window.addEventListener(MONEY_MANAGER_STORAGE_SYNC_EVENT, handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener(MONEY_MANAGER_STORAGE_SYNC_EVENT, handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
+  }, [fetchBudgets]);
+
   // Month navigation helpers
   const goToPreviousMonth = () => {
     try {
-      const parsed = parse(`${selectedMonth}-01`, 'yyyy-MM-dd', new Date());
+      const parsed = parse(`${selectedMonth}-01`, 'yyyy-MM-dd', new Date(2000, 0, 1));
       const prev = subMonths(parsed, 1);
       setSelectedMonth(format(prev, 'yyyy-MM'));
     } catch {
@@ -91,7 +109,7 @@ export function BudgetsProvider({ children }: { children: React.ReactNode }) {
 
   const goToNextMonth = () => {
     try {
-      const parsed = parse(`${selectedMonth}-01`, 'yyyy-MM-dd', new Date());
+      const parsed = parse(`${selectedMonth}-01`, 'yyyy-MM-dd', new Date(2000, 0, 1));
       const next = addMonths(parsed, 1);
       setSelectedMonth(format(next, 'yyyy-MM'));
     } catch {
@@ -149,20 +167,23 @@ export function BudgetsProvider({ children }: { children: React.ReactNode }) {
       const category = categories.find((c) => c.id === budget.categoryId);
 
       // Sum all EXPENSE transactions for this category in the selected month
+      // using timezone-aware calendar month matching (e.g. Asia/Dhaka GMT+6)
       let actualSpent = 0;
       transactions.forEach((tx) => {
+        const txMonth = getLocalMonthKey(tx.date);
         if (
           tx.type === 'EXPENSE' &&
           tx.categoryId === budget.categoryId &&
-          tx.date.startsWith(selectedMonth)
+          txMonth === selectedMonth
         ) {
           actualSpent += tx.amount;
         }
       });
 
-      // If no live transactions found for this month, use initial seed spent
-      const finalSpent = actualSpent > 0 ? actualSpent : budget.spent;
-      const remaining = budget.limit - finalSpent;
+      // The live transactions ledger is the single source of truth for spending.
+      // If 0 transactions exist for this category in this month, spent is strictly 0.
+      const finalSpent = roundCurrency(actualSpent);
+      const remaining = roundCurrency(budget.limit - finalSpent);
       const percentage = budget.limit > 0 ? (finalSpent / budget.limit) * 100 : 0;
 
       let status: BudgetHealthStatus = 'ON_TRACK';
@@ -203,12 +224,12 @@ export function BudgetsProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    const remaining = allocated - spent;
+    const remaining = roundCurrency(allocated - spent);
     const overallPct = allocated > 0 ? (spent / allocated) * 100 : 0;
 
     return {
-      totalBudget: allocated,
-      totalSpent: spent,
+      totalBudget: roundCurrency(allocated),
+      totalSpent: roundCurrency(spent),
       totalRemaining: remaining,
       overallPercentage: overallPct,
       onTrackCount: onTrack,
