@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { format } from 'date-fns';
 import { PlusCircle, Bell, ChevronDown, User, Settings, LogOut, Check } from 'lucide-react';
@@ -18,6 +19,8 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useTransactions } from '@/features/transactions/hooks/useTransactions';
+import { useSettings } from '@/features/settings/hooks/useSettings';
+import { CURRENCY_SYMBOLS } from '@/lib/formatters';
 
 const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
   '/': {
@@ -49,7 +52,17 @@ const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
 export function Header() {
   const pathname = usePathname();
   const { openCreateModal } = useTransactions();
+  const { profile, preferences } = useSettings();
   const [todayFormatted, setTodayFormatted] = useState<string>('');
+
+  const currencySymbol = CURRENCY_SYMBOLS[preferences.currency] || '৳';
+
+  const initials = profile.name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('') || 'MM';
 
   useEffect(() => {
     setTodayFormatted(format(new Date(), 'EEEE, MMMM d, yyyy'));
@@ -102,15 +115,15 @@ export function Header() {
               >
                 <Avatar size="sm">
                   <AvatarFallback className="bg-primary/10 text-primary font-medium text-xs">
-                    AD
+                    {initials}
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden md:flex flex-col text-left">
                   <span className="text-xs font-semibold text-foreground leading-none">
-                    Akash Das
+                    {profile.name}
                   </span>
                   <span className="text-[10px] text-muted-foreground">
-                    Dhaka, Bangladesh
+                    {profile.location}
                   </span>
                 </div>
                 <ChevronDown className="size-3.5 text-muted-foreground" />
@@ -120,17 +133,17 @@ export function Header() {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium text-foreground">Akash Das</p>
-                <p className="text-xs text-muted-foreground">akash@example.com</p>
+                <p className="text-sm font-medium text-foreground">{profile.name}</p>
+                <p className="text-xs text-muted-foreground">{profile.email}</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem className="cursor-pointer gap-2">
+              <DropdownMenuItem className="cursor-pointer gap-2" render={<Link href="/settings" />}>
                 <User className="size-4 text-muted-foreground" />
-                <span>Profile</span>
+                <span>Profile Settings</span>
               </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer gap-2">
+              <DropdownMenuItem className="cursor-pointer gap-2" render={<Link href="/settings" />}>
                 <Settings className="size-4 text-muted-foreground" />
                 <span>Preferences</span>
               </DropdownMenuItem>
@@ -139,14 +152,14 @@ export function Header() {
             <div className="px-2 py-1.5 text-xs text-muted-foreground flex items-center justify-between">
               <span>Currency</span>
               <Badge variant="secondary" className="text-[10px] font-mono gap-1">
-                <Check className="size-3 text-emerald-500" /> BDT (৳)
+                <Check className="size-3 text-emerald-500" /> {preferences.currency} ({currencySymbol})
               </Badge>
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="destructive"
               className="cursor-pointer gap-2"
-              onClick={() => alert('Log out clicked')}
+              onClick={() => alert('Money Manager local session active.')}
             >
               <LogOut className="size-4" />
               <span>Log out</span>

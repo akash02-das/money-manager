@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, Wallet, ShieldCheck } from 'lucide-react';
@@ -22,11 +22,16 @@ import { useBudgets } from '@/features/budgets/hooks/useBudgets';
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname();
   const { activeAccountsCount } = useAccounts();
   const { activeCount: activeCategoriesCount } = useCategories();
   const { totalCount: totalTransactionsCount } = useTransactions();
   const { activeMonthBudgetsCount } = useBudgets();
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -71,16 +76,17 @@ export function MobileNav() {
                 ? pathname === item.href
                 : pathname.startsWith(item.href);
 
-              const badgeValue =
-                item.href === '/accounts'
-                  ? activeAccountsCount
-                  : item.href === '/categories'
-                  ? activeCategoriesCount
-                  : item.href === '/transactions'
-                  ? totalTransactionsCount
-                  : item.href === '/budgets'
-                  ? activeMonthBudgetsCount
-                  : item.badge;
+              const badgeValue = !isMounted
+                ? undefined
+                : item.href === '/accounts'
+                ? activeAccountsCount
+                : item.href === '/categories'
+                ? activeCategoriesCount
+                : item.href === '/transactions'
+                ? totalTransactionsCount
+                : item.href === '/budgets'
+                ? activeMonthBudgetsCount
+                : item.badge;
 
               return (
                 <Link

@@ -1,4 +1,4 @@
-export type CurrencyCode = 'BDT' | 'USD' | 'EUR';
+export type CurrencyCode = 'BDT' | 'USD' | 'EUR' | 'GBP';
 
 export type AccountType =
   | 'CASH'

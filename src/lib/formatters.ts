@@ -8,6 +8,7 @@ export const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
   BDT: '৳',
   USD: '$',
   EUR: '€',
+  GBP: '£',
 };
 
 /**
