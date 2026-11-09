@@ -1,40 +1,10 @@
-'use client';
-
-import React, { useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { AuthProvider, useAuth } from '@/features/auth/context/AuthContext';
-import { Wallet } from 'lucide-react';
+import React from 'react';
 import Link from 'next/link';
+import { Wallet } from 'lucide-react';
+import { AuthProvider } from '@/features/auth/context/AuthContext';
+import { AuthRedirectGuard } from '@/components/auth/AuthRedirectGuard';
 
-function AuthRedirectGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, user, isLoading } = useAuth();
-  const router = useRouter();
-  const pathname = usePathname();
-
-  useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      if (user?.accountType === 'LOCAL_DEMO' || user?.isEmailVerified) {
-        if (pathname !== '/verify-email') {
-          router.replace('/');
-        }
-      }
-    }
-  }, [isAuthenticated, user, isLoading, router, pathname]);
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <div className="size-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-      </div>
-    );
-  }
-
-  if (isAuthenticated && (user?.accountType === 'LOCAL_DEMO' || user?.isEmailVerified) && pathname !== '/verify-email') {
-    return null;
-  }
-
-  return <>{children}</>;
-}
+export const instant = false;
 
 const CURRENT_YEAR = 2026;
 
@@ -72,4 +42,3 @@ export default function AuthLayout({
     </AuthProvider>
   );
 }
-

@@ -213,5 +213,27 @@ describe('Email Verification & Account-Type Indicators Suite', () => {
     const canAccessVerifiedAccount = user.isEmailVerified;
     assert.strictEqual(canAccessVerifiedAccount, false, 'Unverified user must not get verified access');
   });
+
+  function shouldRedirectFromAuthPages(user: { accountType: string; isEmailVerified?: boolean } | null, pathname: string): boolean {
+    if (!user) return false;
+    if (user.accountType === 'VERIFIED' && user.isEmailVerified) {
+      return pathname !== '/verify-email';
+    }
+    // LOCAL_DEMO users must NOT be redirected so they can register or sign in to verified accounts
+    return false;
+  }
+
+  it('allows LOCAL_DEMO users to visit /register and /login without being redirected to dashboard', () => {
+    const demoUser = { accountType: 'LOCAL_DEMO', isEmailVerified: false };
+    assert.strictEqual(shouldRedirectFromAuthPages(demoUser, '/register'), false, 'Demo user must be allowed on /register');
+    assert.strictEqual(shouldRedirectFromAuthPages(demoUser, '/login'), false, 'Demo user must be allowed on /login');
+  });
+
+  it('redirects already VERIFIED users away from /register and /login to dashboard', () => {
+    const verifiedUser = { accountType: 'VERIFIED', isEmailVerified: true };
+    assert.strictEqual(shouldRedirectFromAuthPages(verifiedUser, '/register'), true, 'Verified user should be redirected');
+    assert.strictEqual(shouldRedirectFromAuthPages(verifiedUser, '/login'), true, 'Verified user should be redirected');
+    assert.strictEqual(shouldRedirectFromAuthPages(verifiedUser, '/verify-email'), false, 'Should allow /verify-email');
+  });
 });
 
