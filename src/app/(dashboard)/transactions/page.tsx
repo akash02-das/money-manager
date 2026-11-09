@@ -5,6 +5,8 @@ export const metadata = {
   description: 'Track and manage your income, expenses, and account transfers in BDT.',
 };
 
+export const instant = false;
+
 export default function TransactionsPage() {
   return <TransactionsListView />;
 }

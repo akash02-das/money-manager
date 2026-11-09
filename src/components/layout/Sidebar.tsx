@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Wallet, ShieldCheck } from 'lucide-react';
+import { Wallet, ShieldCheck, HardDrive, CloudCheck } from 'lucide-react';
 import { NAV_ITEMS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { useCategories } from '@/features/categories/hooks/useCategories';
 import { useTransactions } from '@/features/transactions/hooks/useTransactions';
 import { useState, useEffect } from 'react';
 import { useBudgets } from '@/features/budgets/hooks/useBudgets';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -19,6 +20,7 @@ export function Sidebar() {
   const { activeCount: activeCategoriesCount } = useCategories();
   const { totalCount: totalTransactionsCount } = useTransactions();
   const { activeMonthBudgetsCount } = useBudgets();
+  const { isDemo, isVerified } = useAuth();
 
   useEffect(() => {
     setIsMounted(true);
@@ -103,17 +105,39 @@ export function Sidebar() {
         </nav>
       </div>
 
-      {/* Bottom Profile / Status Section */}
+      {/* Bottom Profile / Account Status Section */}
       <div className="p-4 border-t border-border">
-        <div className="rounded-xl border border-border/80 bg-muted/40 p-3">
-          <div className="flex items-center gap-2 mb-1">
-            <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-xs font-semibold text-foreground">Encrypted & Local</span>
+        {isDemo ? (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <HardDrive className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="text-xs font-semibold text-amber-900 dark:text-amber-300">Local Account</span>
+            </div>
+            <p className="text-[11px] text-amber-800/80 dark:text-amber-400/80 leading-relaxed">
+              Stored only in this browser (LocalStorage). Independent from server.
+            </p>
           </div>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Data saved in browser memory during frontend stage.
-          </p>
-        </div>
+        ) : isVerified ? (
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <CloudCheck className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="text-xs font-semibold text-emerald-900 dark:text-emerald-300">Verified Account</span>
+            </div>
+            <p className="text-[11px] text-emerald-800/80 dark:text-emerald-400/80 leading-relaxed">
+              Email verified. Ledgers synchronized to cloud database.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-border/80 bg-muted/40 p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <ShieldCheck className="size-4 text-muted-foreground shrink-0" />
+              <span className="text-xs font-semibold text-foreground">Encrypted Ledger</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Financial data encrypted & secure.
+            </p>
+          </div>
+        )}
       </div>
     </aside>
   );

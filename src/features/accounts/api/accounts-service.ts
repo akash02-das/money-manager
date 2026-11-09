@@ -1,10 +1,7 @@
 import type { Account, CurrencyCode } from '@/types/finance';
-import { MOCK_ACCOUNTS, MOCK_TRANSACTIONS } from '@/mocks/finance-data';
 import type { AccountFormData } from '../schemas/account-schema';
 import { apiClient, tokenStorage } from '@/lib/api-client';
-
-const STORAGE_KEY = 'money_manager_accounts_v1';
-const TRANSACTIONS_STORAGE_KEY = 'money_manager_transactions_v1';
+import { getEntityStorageKey, isDemoSession } from '@/lib/storage-adapter';
 
 export interface CreateAccountDto extends AccountFormData {}
 export interface UpdateAccountDto extends Partial<AccountFormData> {
@@ -14,7 +11,8 @@ export interface UpdateAccountDto extends Partial<AccountFormData> {
 function getStoredTransactionReferences(): { accountId: string; toAccountId?: string }[] {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(TRANSACTIONS_STORAGE_KEY);
+    const key = getEntityStorageKey('TRANSACTIONS');
+    const raw = localStorage.getItem(key);
     if (!raw) return [];
     return JSON.parse(raw);
   } catch {
@@ -28,7 +26,8 @@ function getStoredAccounts(): Account[] {
   }
 
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const key = getEntityStorageKey('ACCOUNTS');
+    const raw = localStorage.getItem(key);
     if (!raw) {
       return [];
     }
@@ -44,7 +43,7 @@ function getStoredAccounts(): Account[] {
     });
 
     if (hasChanges) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+      localStorage.setItem(key, JSON.stringify(normalized));
     }
 
     return normalized;
@@ -57,7 +56,8 @@ function getStoredAccounts(): Account[] {
 function setStoredAccounts(accounts: Account[]): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(accounts));
+    const key = getEntityStorageKey('ACCOUNTS');
+    localStorage.setItem(key, JSON.stringify(accounts));
   } catch (error) {
     console.error('Failed to save accounts to storage:', error);
   }
@@ -225,9 +225,7 @@ export const accountsService = {
   },
 
   async resetToDefault(): Promise<Account[]> {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(MOCK_ACCOUNTS));
-    }
-    return MOCK_ACCOUNTS;
+    setStoredAccounts([]);
+    return [];
   },
 };

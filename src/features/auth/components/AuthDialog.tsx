@@ -12,8 +12,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../hooks/useAuth';
-import { LogIn, UserPlus, Sparkles, AlertCircle, Eye, EyeOff, Loader2, Lock } from 'lucide-react';
+import { LogIn, UserPlus, Sparkles, AlertCircle, Eye, EyeOff, Loader2, Lock, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CurrencyCode } from '@/types/finance';
 import { PasswordStrengthMeter } from './PasswordStrengthMeter';
@@ -27,6 +28,7 @@ interface AuthDialogProps {
 }
 
 export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
+  const router = useRouter();
   const { login, register, loginAsDemo, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const [error, setError] = useState<string | null>(null);
@@ -84,8 +86,6 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
       errors.email = emailRes.errorMessage || 'Please provide a valid email address.';
     } else if (emailRes.isDisposable) {
       errors.email = 'Temporary/disposable emails are blocked to secure your financial vault.';
-    } else if (!isRegEmailVerified) {
-      errors.email = 'Please click "Verify" next to your email to verify it is real.';
     }
 
     const strength = evaluatePasswordStrength(regPassword);
@@ -111,6 +111,17 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
       await login({ email: loginEmail.trim(), password: loginPassword });
       onOpenChange(false);
     } catch (err: any) {
+      if (err?.error === 'EMAIL_NOT_VERIFIED' || err?.message?.includes('not been verified')) {
+        onOpenChange(false);
+        if (typeof window !== 'undefined' && err?.verificationPreview) {
+          sessionStorage.setItem(
+            'mm_last_verification_preview',
+            JSON.stringify({ email: loginEmail.trim(), code: err.verificationPreview.code }),
+          );
+        }
+        router.push(`/verify-email?email=${encodeURIComponent(loginEmail.trim())}`);
+        return;
+      }
       setError(err?.message || 'Email and password did not match. Please verify your credentials.');
     }
   };
@@ -124,26 +135,30 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
     }
 
     try {
-      await register({
+      const res = await register({
         name: regName.trim(),
         email: regEmail.trim(),
         password: regPassword,
         currency: regCurrency,
       });
       onOpenChange(false);
+      if (typeof window !== 'undefined' && res?.verificationPreview) {
+        sessionStorage.setItem(
+          'mm_last_verification_preview',
+          JSON.stringify({ email: regEmail.trim(), code: res.verificationPreview.code }),
+        );
+      }
+      router.push(`/verify-email?email=${encodeURIComponent(regEmail.trim())}`);
     } catch (err: any) {
       setError(err?.message || 'Failed to create account. Please try again.');
     }
   };
 
-  const handleDemoSignIn = async () => {
+  const handleDemoSignIn = () => {
     setError(null);
-    try {
-      await loginAsDemo();
-      onOpenChange(false);
-    } catch (err: any) {
-      setError(err?.message || 'Could not connect demo account.');
-    }
+    loginAsDemo();
+    onOpenChange(false);
+    router.push('/');
   };
 
   return (
@@ -298,16 +313,22 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
               </div>
             </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full gap-2 border-emerald-500/30 text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
-              onClick={handleDemoSignIn}
-              disabled={isLoading}
-            >
-              <Sparkles className="size-4 text-emerald-500" />
-              <span>Quick Demo Sign In</span>
-            </Button>
+            <div className="space-y-1.5 text-center">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full gap-2 border-emerald-500/30 text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30 cursor-pointer"
+                onClick={handleDemoSignIn}
+                disabled={isLoading}
+              >
+                <Sparkles className="size-4 text-emerald-500" />
+                <span>⚡ Jump in with Instant Demo</span>
+              </Button>
+              <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                <ShieldCheck className="size-3 text-emerald-500" />
+                <span>Local Account — Stored only in this browser</span>
+              </p>
+            </div>
           </TabsContent>
 
           <TabsContent value="register" className="mt-4 space-y-4">

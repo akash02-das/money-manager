@@ -216,17 +216,6 @@ export function TransactionsListView() {
 
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
-            size="sm"
-            onClick={resetToDefault}
-            className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-            title="Reset to default mock transactions"
-          >
-            <RotateCcw className="size-3.5" />
-            <span className="hidden md:inline">Reset Demo Data</span>
-          </Button>
-
-          <Button
             onClick={openCreateModal}
             size="sm"
             className="gap-1.5 font-medium shadow-sm"

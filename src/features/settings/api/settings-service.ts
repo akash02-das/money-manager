@@ -7,25 +7,17 @@ import {
   parseAndValidateBackupJSON,
 } from '../schemas/backup-schema';
 import {
-  MOCK_ACCOUNTS,
-  MOCK_CATEGORIES,
-  MOCK_TRANSACTIONS,
-} from '@/mocks/finance-data';
-import { INITIAL_MOCK_BUDGETS } from '@/features/budgets/api/budgets-service';
+  getEntityStorageKey,
+  DEFAULT_APP_CATEGORIES,
+} from '@/lib/storage-adapter';
 
 export const MONEY_MANAGER_STORAGE_SYNC_EVENT = 'money_manager_storage_sync';
 
-const SETTINGS_STORAGE_KEY = 'money_manager_settings_v1';
-const ACCOUNTS_STORAGE_KEY = 'money_manager_accounts_v1';
-const CATEGORIES_STORAGE_KEY = 'money_manager_categories_v1';
-const TRANSACTIONS_STORAGE_KEY = 'money_manager_transactions_v1';
-const BUDGETS_STORAGE_KEY = 'money_manager_budgets_v1';
-
 export const DEFAULT_USER_PROFILE: UserProfile = {
-  name: 'Akash Das',
-  email: 'akash@example.com',
-  location: 'Dhaka, Bangladesh',
-  monthlySavingsTarget: 25000,
+  name: 'Demo User',
+  email: 'demo@browser.local',
+  location: 'Local Browser',
+  monthlySavingsTarget: 0,
 };
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
@@ -47,6 +39,10 @@ export interface ExportDataBundle {
   budgets: unknown[];
 }
 
+function getSettingsKey(): string {
+  return getEntityStorageKey('SETTINGS');
+}
+
 export const settingsService = {
   /**
    * Fetch current user settings & preferences
@@ -60,13 +56,13 @@ export const settingsService = {
     }
 
     try {
-      const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      const stored = localStorage.getItem(getSettingsKey());
       if (!stored) {
         const initial: SettingsState = {
           profile: DEFAULT_USER_PROFILE,
           preferences: DEFAULT_PREFERENCES,
         };
-        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(initial));
+        localStorage.setItem(getSettingsKey(), JSON.stringify(initial));
         return initial;
       }
       const parsed = JSON.parse(stored);
@@ -87,7 +83,7 @@ export const settingsService = {
    */
   async saveSettings(settings: SettingsState): Promise<SettingsState> {
     if (typeof window !== 'undefined') {
-      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+      localStorage.setItem(getSettingsKey(), JSON.stringify(settings));
     }
     return settings;
   },
@@ -129,16 +125,16 @@ export const settingsService = {
 
     if (typeof window !== 'undefined') {
       try {
-        accounts = JSON.parse(localStorage.getItem(ACCOUNTS_STORAGE_KEY) || '[]');
+        accounts = JSON.parse(localStorage.getItem(getEntityStorageKey('ACCOUNTS')) || '[]');
       } catch {}
       try {
-        categories = JSON.parse(localStorage.getItem(CATEGORIES_STORAGE_KEY) || '[]');
+        categories = JSON.parse(localStorage.getItem(getEntityStorageKey('CATEGORIES')) || '[]');
       } catch {}
       try {
-        transactions = JSON.parse(localStorage.getItem(TRANSACTIONS_STORAGE_KEY) || '[]');
+        transactions = JSON.parse(localStorage.getItem(getEntityStorageKey('TRANSACTIONS')) || '[]');
       } catch {}
       try {
-        budgets = JSON.parse(localStorage.getItem(BUDGETS_STORAGE_KEY) || '[]');
+        budgets = JSON.parse(localStorage.getItem(getEntityStorageKey('BUDGETS')) || '[]');
       } catch {}
     }
 
@@ -147,10 +143,10 @@ export const settingsService = {
       appName: 'Money Manager',
       exportedAt: new Date().toISOString(),
       settings,
-      accounts: accounts.length > 0 ? accounts : MOCK_ACCOUNTS,
-      categories: categories.length > 0 ? categories : MOCK_CATEGORIES,
-      transactions: transactions.length > 0 ? transactions : MOCK_TRANSACTIONS,
-      budgets: budgets.length > 0 ? budgets : INITIAL_MOCK_BUDGETS,
+      accounts,
+      categories: categories.length > 0 ? categories : DEFAULT_APP_CATEGORIES,
+      transactions,
+      budgets,
     };
   },
 
@@ -174,20 +170,20 @@ export const settingsService = {
 
       // 1. Settings restore (if provided)
       if (data.settings) {
-        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(data.settings));
+        localStorage.setItem(getEntityStorageKey('SETTINGS'), JSON.stringify(data.settings));
       }
 
       // 2. Accounts restore
-      localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(data.accounts));
+      localStorage.setItem(getEntityStorageKey('ACCOUNTS'), JSON.stringify(data.accounts));
 
       // 3. Categories restore
-      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(data.categories));
+      localStorage.setItem(getEntityStorageKey('CATEGORIES'), JSON.stringify(data.categories));
 
       // 4. Transactions restore
-      localStorage.setItem(TRANSACTIONS_STORAGE_KEY, JSON.stringify(data.transactions));
+      localStorage.setItem(getEntityStorageKey('TRANSACTIONS'), JSON.stringify(data.transactions));
 
       // 5. Budgets restore
-      localStorage.setItem(BUDGETS_STORAGE_KEY, JSON.stringify(data.budgets));
+      localStorage.setItem(getEntityStorageKey('BUDGETS'), JSON.stringify(data.budgets));
 
       // 6. Broadcast storage sync event so all in-memory providers update immediately
       window.dispatchEvent(new CustomEvent(MONEY_MANAGER_STORAGE_SYNC_EVENT));
@@ -209,29 +205,29 @@ export const settingsService = {
   },
 
   /**
-   * Factory Reset: clears all localStorage keys and re-populates with default initial mock data
+   * Factory Reset: clears all localStorage keys and re-populates with clean zeroed data
    */
   async factoryReset(): Promise<void> {
     if (typeof window === 'undefined') return;
 
-    localStorage.removeItem(SETTINGS_STORAGE_KEY);
-    localStorage.removeItem(ACCOUNTS_STORAGE_KEY);
-    localStorage.removeItem(CATEGORIES_STORAGE_KEY);
-    localStorage.removeItem(TRANSACTIONS_STORAGE_KEY);
-    localStorage.removeItem(BUDGETS_STORAGE_KEY);
+    localStorage.removeItem(getEntityStorageKey('SETTINGS'));
+    localStorage.removeItem(getEntityStorageKey('ACCOUNTS'));
+    localStorage.removeItem(getEntityStorageKey('CATEGORIES'));
+    localStorage.removeItem(getEntityStorageKey('TRANSACTIONS'));
+    localStorage.removeItem(getEntityStorageKey('BUDGETS'));
 
-    // Re-seed clean demo state
+    // Re-seed clean zero-data state
     localStorage.setItem(
-      SETTINGS_STORAGE_KEY,
+      getEntityStorageKey('SETTINGS'),
       JSON.stringify({
         profile: DEFAULT_USER_PROFILE,
         preferences: DEFAULT_PREFERENCES,
       })
     );
-    localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(MOCK_ACCOUNTS));
-    localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(MOCK_CATEGORIES));
-    localStorage.setItem(TRANSACTIONS_STORAGE_KEY, JSON.stringify(MOCK_TRANSACTIONS));
-    localStorage.setItem(BUDGETS_STORAGE_KEY, JSON.stringify(INITIAL_MOCK_BUDGETS));
+    localStorage.setItem(getEntityStorageKey('ACCOUNTS'), JSON.stringify([]));
+    localStorage.setItem(getEntityStorageKey('CATEGORIES'), JSON.stringify(DEFAULT_APP_CATEGORIES));
+    localStorage.setItem(getEntityStorageKey('TRANSACTIONS'), JSON.stringify([]));
+    localStorage.setItem(getEntityStorageKey('BUDGETS'), JSON.stringify([]));
 
     // Broadcast storage sync event
     window.dispatchEvent(new CustomEvent(MONEY_MANAGER_STORAGE_SYNC_EVENT));

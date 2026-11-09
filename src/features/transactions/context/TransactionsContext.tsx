@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import type { Transaction, Account, Category } from '@/types/finance';
-import { MOCK_TRANSACTIONS } from '@/mocks/finance-data';
 import {
   transactionsService,
   populateTransactionRelations,
@@ -42,11 +41,7 @@ export function TransactionsProvider({ children }: { children: React.ReactNode }
   const { accounts, refreshAccounts } = useAccounts();
   const { categories } = useCategories();
 
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    return MOCK_TRANSACTIONS.map((tx) =>
-      populateTransactionRelations(tx, accounts, categories)
-    );
-  });
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);

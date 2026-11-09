@@ -1,20 +1,25 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { AuthProvider, useAuth } from '@/features/auth/context/AuthContext';
 import { Wallet } from 'lucide-react';
 import Link from 'next/link';
 
 function AuthRedirectGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.replace('/');
+      if (user?.accountType === 'LOCAL_DEMO' || user?.isEmailVerified) {
+        if (pathname !== '/verify-email') {
+          router.replace('/');
+        }
+      }
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, user, isLoading, router, pathname]);
 
   if (isLoading) {
     return (
@@ -24,7 +29,7 @@ function AuthRedirectGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (isAuthenticated) {
+  if (isAuthenticated && (user?.accountType === 'LOCAL_DEMO' || user?.isEmailVerified) && pathname !== '/verify-email') {
     return null;
   }
 

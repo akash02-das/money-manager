@@ -27,6 +27,7 @@ async function main() {
       currency: Currency.BDT,
       location: 'Dhaka, Bangladesh',
       monthlySavingsTarget: 25000,
+      isEmailVerified: true,
       categories: {
         create: [
           { name: 'Salary & Employment', type: CategoryType.INCOME, icon: 'Briefcase', color: '#10b981', isDefault: true },

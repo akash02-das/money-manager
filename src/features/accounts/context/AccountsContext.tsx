@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import type { Account, AccountType } from '@/types/finance';
-import { MOCK_ACCOUNTS } from '@/mocks/finance-data';
 import { accountsService, type CreateAccountDto, type UpdateAccountDto } from '../api/accounts-service';
 import { MONEY_MANAGER_STORAGE_SYNC_EVENT } from '@/features/settings/api/settings-service';
 import { roundCurrency } from '@/lib/formatters';
@@ -30,7 +29,7 @@ interface AccountsContextValue {
 const AccountsContext = createContext<AccountsContextValue | undefined>(undefined);
 
 export function AccountsProvider({ children }: { children: React.ReactNode }) {
-  const [accounts, setAccounts] = useState<Account[]>(MOCK_ACCOUNTS);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 

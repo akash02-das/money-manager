@@ -8,48 +8,50 @@ Built with **Next.js 16** (App Router & Turbopack), **NestJS 11**, **Prisma ORM 
 
 ## 🌟 Key Features & Implemented Functionalities
 
-### 1. 📊 Financial Cockpit & Dashboard Analytics
+### 1. 📧 Real Email Verification for Registered Accounts
+- **Strict Verification Gate**: Entering an email does not grant access. Users cannot access dashboard routes (`/`, `/accounts`, etc.) or protected APIs until their email address is verified via a 6-digit OTP code or direct token link.
+- **Unverified Access Protection**:
+  - **API Level**: Login attempts with unverified emails are blocked with HTTP `403 Forbidden` (`EMAIL_NOT_VERIFIED`).
+  - **JWT Guard**: Tokens for unverified users are rejected by `JwtStrategy`.
+  - **Frontend Route Guard**: `AuthGuard` redirects any unverified session immediately to `/verify-email`.
+- **Expired & Replay Protection**: Verification codes expire automatically after 15 minutes. Once used, tokens are flagged `isUsed: true` and cannot be replayed.
+- **Resend Support with Cooldown**: Users can request a fresh code anytime with a 60-second spam-prevention cooldown timer.
+- **Email Validation & Typo Detection**: Validates RFC email syntax, blocks 80+ burner email providers, and detects common typos (e.g., `gmial.com` &rarr; `gmail.com`).
+
+### 2. ⚡ Instant Demo — Local Account (Zero Setup)
+- **Instant 1-Click Access**: "⚡ Jump in with Instant Demo" takes users immediately to a fresh, clean dashboard without registration or email verification.
+- **Strict Client-Side Isolation**: Demo data is stored **exclusively in the browser's LocalStorage** (`mm_demo_*`).
+- **No Server Pollution**: Demo accounts never communicate with or contaminate the backend PostgreSQL database.
+- **Full Offline Usability**: Demo accounts can create accounts, record transactions, and set budgets entirely client-side.
+
+### 3. 🧼 Clean Slate Guarantee (Completely Removed Mock & Seed Data)
+- **Zero Preloaded / Placeholder Records**: Starts with 0 accounts, 0 transactions, 0 budgets, and 0 placeholder balances.
+- **No Fabricated Chart Data**: Dashboard metrics, cash flow trends, and category breakdowns reflect real user-created data only.
+- **Actionable Empty States**: Every screen features helpful onboarding states (e.g., *"Create your first account"*, *"Add your first transaction"*, *"Set your first budget"*).
+- **Default Category Palettes**: Clean standard categories (Salary, Housing, Groceries, Dining, etc.) are available with zero balances so dropdowns work out of the box.
+
+### 4. 🏷️ Clear Account-Type Indicators
+Users can always identify their active mode:
+- **`Local Account` (Amber Badge)**: Displayed prominently in the top Header, Profile Dropdown, Sidebar, and Settings. Clearly states: *"Stored only in this browser (LocalStorage). Independent from server."*
+- **`Verified Account` (Emerald Badge)**: Displayed for authenticated users with confirmed email addresses. Clearly states: *"Email verified. Ledgers synchronized to cloud database."*
+- **Settings Account & Storage Card**: The Settings page displays active storage engine, email verification status, and offers a 1-click path to upgrade from Instant Demo to a Verified Cloud Account.
+
+### 5. 📊 Financial Cockpit & Dashboard Analytics
 - **Live Net Worth & Balances**: Unified real-time aggregation across all active cash, bank, and mobile wallet accounts.
 - **Monthly Cash Flow Metrics**: Tracks Total Income, Total Expenses, Net Savings, and Month-over-Month % change.
-- **Budget Health Overview**: Real-time spending progress bars indicating on-track vs. exceeded category thresholds.
-- **Clean State for New Users**: Brand-new registered accounts start fresh with zero unwanted mock data, accompanied by a helpful onboarding welcome banner.
+- **Dynamic Cash Flow Trend**: 6-month visual trajectory of income vs. expenditures.
+- **Category Spending Breakdown**: Visual distribution of monthly expenses with color-coded progress indicators.
 
-### 2. 💳 Multi-Account Ledger
+### 6. 💳 Multi-Account Ledger & Atomic Transfers
 - **Supported Account Types**: Cash, Bank Account, Mobile Wallet (bKash/Nagad), Credit Card, and Savings.
 - **Multi-Currency Support**: Native handling for BDT (৳), USD ($), EUR (€), and GBP (£).
+- **Atomic Transfers**: PostgreSQL transactions (`prisma.$transaction`) ensure source and destination balances remain mathematically synchronized.
 - **Archiving & Ledger Safety**: Soft-archive accounts to maintain financial historical integrity. Restrictive foreign key safeguards prevent deleting accounts tied to active transactions.
 
-### 3. 💸 Transaction Engine (Double-Entry Balance Adjustments)
-- **Transaction Types**: Income, Expense, and Account-to-Account Transfers.
-- **Atomic Balance Consistency**: Powered by PostgreSQL transactions (`prisma.$transaction`) to guarantee source and destination account balances remain mathematically synchronized.
-- **Advanced Filtering**: Filter transactions by calendar month, transaction type, or specific account.
-
-### 4. 🎯 Category Budgets & Spending Caps
+### 7. 🎯 Category Budgets & Spending Caps
 - **Monthly Spending Limits**: Set monthly monetary limits per expense category.
-- **Dynamic Actual Spending Aggregation**: Live calculation of spent amounts vs. allocated budget limits with visual percentage badges.
-- **Overspending Alerts**: Highlight categories approaching or exceeding budget limits.
-
-### 5. 🏷️ Categories & Custom Lucide Icons
-- **System Defaults**: Pre-seeded income and expense categories (Salary, Consulting, Housing, Groceries, Utilities, Dining, Transport, Health).
-- **Fully Customizable**: Create custom categories with Lucide icons and personalized color palettes.
-
-### 6. 🔐 Bank-Grade Authentication & Security
-- **JWT Authentication with Token Rotation**: Secure short-lived access tokens (15m) paired with database-backed refresh tokens (7d) and token revocation.
-- **Route Protection (`AuthGuard`)**: Enforces authentication on all dashboard routes (`/`, `/accounts`, `/transactions`, `/budgets`, `/categories`, `/settings`), redirecting unauthenticated users to `/login`.
-- **Real Email Verification**:
-  - Validates RFC syntax and active domain extension length.
-  - **Disposable Email Blocker**: Blocks 80+ temporary burner email services (e.g., `tempmail.com`, `mailinator.com`, `guerrillamail.com`) at both UI and API layers.
-  - **Domain Typo Detection**: Identifies common provider misspellings (e.g., `gmial.com` &rarr; `gmail.com`) with a 1-click *"Yes, Fix It"* prompt.
-  - **6-Digit Verification Flow**: Interactive verification code generation with in-app delivery preview and 1-click auto-verification.
-- **Strong Password Engine**:
-  - Enforces a 5-rule criteria checklist: 8+ characters, uppercase letter, lowercase letter, number, and special symbol (`!@#$%^&*`).
-  - Dynamic 5-segment strength meter (0% to 100%) transitioning from Red &rarr; Orange &rarr; Yellow &rarr; Emerald Green.
-  - **1-Click Password Suggestion**: Generates cryptographically secure, high-entropy 12-character passwords (e.g., `K9#mQ2$vL8!x`) with auto-copy.
-  - **Interactive Security Demo**: Built-in modal demonstrating how high-entropy passwords resist dictionary attacks.
-  - **Strict Submit Gate**: *"Unlock My Dashboard"* and *"Activate My Vault"* buttons remain disabled until both email and password are fully valid.
-- **Dual-Mode Resilience**:
-  - **Online Mode**: Full REST API persistence connected to PostgreSQL.
-  - **Local / Offline Mode**: Seamless zero-dependency local storage fallback allowing immediate testing and exploration even when the backend or database is offline.
+- **Live Spending Aggregation**: Dynamic tracking of spent amounts vs. allocated budget limits with visual percentage badges.
+- **Overspending Alerts**: Visual warnings when categories approach or exceed spending limits.
 
 ---
 
@@ -60,7 +62,7 @@ Built with **Next.js 16** (App Router & Turbopack), **NestJS 11**, **Prisma ORM 
 | **Frontend** | Next.js 16.4.3 (App Router, Turbopack), React 19, Tailwind CSS v4, Base UI, Lucide Icons, Recharts, date-fns |
 | **Backend** | NestJS 11, TypeScript, Passport.js, JWT, bcrypt, class-validator, class-transformer |
 | **Database & ORM** | PostgreSQL 16 (Alpine), Prisma ORM 6.4 |
-| **API Docs & Testing** | Swagger / OpenAPI 3.0, Jest (26 unit tests across 7 test suites) |
+| **API Docs & Testing** | Swagger / OpenAPI 3.0, Jest (35 backend unit tests), Node Test Runner (9 frontend unit tests) |
 
 ---
 
@@ -136,16 +138,17 @@ The backend is now live:
    - Web App: [http://localhost:3000](http://localhost:3000)
    - Sign In: [http://localhost:3000/login](http://localhost:3000/login)
    - Register: [http://localhost:3000/register](http://localhost:3000/register)
+   - Verify Email: [http://localhost:3000/verify-email](http://localhost:3000/verify-email)
 
 ---
 
-## 🔑 Default Credentials & Quick Demo Access
+## 🔑 Account Types & Access Options
 
-| Account Type | Email | Password | Access Mode |
+| Account Type | Access Flow | Data Storage | Identification |
 | :--- | :--- | :--- | :--- |
-| **Seeded Demo Account** | `demo@moneymanager.local` | `DemoPassword123!` | Online (PostgreSQL) or Local |
-| **Instant Demo Button** | *Click "⚡ Jump In with Instant Demo" on the login screen* | Zero setup required |
-| **New Custom Account** | Register with any real email and strong password | Automatically seeds default categories |
+| **Instant Demo (Local Account)** | Click *"⚡ Jump in with Instant Demo"* on Login or Register | Browser LocalStorage (`mm_demo_*`) | `Local Account` (Amber Badge) |
+| **Verified Account (Cloud)** | Register with email & password &rarr; Enter 6-digit OTP code at `/verify-email` | PostgreSQL Database (Cloud Synchronized) | `Verified Account` (Emerald Badge) |
+| **Seeded Cloud Account** | `demo@moneymanager.local` / `DemoPassword123!` (Pre-verified) | PostgreSQL Database | `Verified Account` (Emerald Badge) |
 
 ---
 
@@ -155,12 +158,14 @@ The backend is now live:
 money-manager/
 ├── backend/                              # NestJS Backend Application
 │   ├── prisma/
-│   │   ├── schema.prisma                 # PostgreSQL Schema (Users, Accounts, Categories, Transactions, Budgets)
-│   │   └── seed.ts                       # Database Seeder (Demo User & Default Categories)
+│   │   ├── schema.prisma                 # PostgreSQL Schema (User, EmailVerification, Account, etc.)
+│   │   └── seed.ts                       # Database Seeder
 │   ├── src/
 │   │   ├── database/                     # Prisma Service & Connection Lifecycle
 │   │   ├── modules/
-│   │   │   ├── auth/                     # JWT Authentication, Password Hashing, Refresh Tokens
+│   │   │   ├── auth/                     # JWT Auth, Email Verification, Password Hashing
+│   │   │   │   ├── dto/                  # verify-email.dto.ts, resend-verification.dto.ts
+│   │   │   │   └── auth.service.spec.ts  # 8 Auth Unit Tests
 │   │   │   ├── users/                    # Profile Management & Savings Targets
 │   │   │   ├── accounts/                 # Multi-Account CRUD & Balance Constraints
 │   │   │   ├── categories/               # Income/Expense Categories & Icons
@@ -175,27 +180,31 @@ money-manager/
 ├── src/                                  # Next.js 16 Frontend Application
 │   ├── app/                              # App Router Pages
 │   │   ├── (auth)/                       # Authentication Route Group
-│   │   │   ├── login/page.tsx            # Sign In with Custom Errors & Strong Password Helpers
-│   │   │   ├── register/page.tsx         # Registration with Real Email Verification & Security Meter
+│   │   │   ├── login/page.tsx            # Sign In with Instant Demo & Unverified Redirect
+│   │   │   ├── register/page.tsx         # Register with Strong Password Helper
+│   │   │   ├── verify-email/page.tsx     # 6-Digit OTP Verification Page
 │   │   │   └── layout.tsx                # Centered Card Layout & Auth Guard
 │   │   ├── (dashboard)/                  # Protected Dashboard Route Group
-│   │   │   ├── page.tsx                  # Overview & Cash Flow Analytics
-│   │   │   ├── accounts/page.tsx         # Accounts Management & Creation
-│   │   │   ├── transactions/page.tsx     # Transaction History, Filters & Transfers
-│   │   │   ├── budgets/page.tsx          # Monthly Category Budgets & Limit Caps
+│   │   │   ├── page.tsx                  # Clean Overview & Cash Flow Analytics
+│   │   │   ├── accounts/page.tsx         # Clean Accounts Management & Empty States
+│   │   │   ├── transactions/page.tsx     # Clean Transaction History & Empty States
+│   │   │   ├── budgets/page.tsx          # Clean Monthly Category Budgets
 │   │   │   ├── categories/page.tsx       # Category Manager & Icon Selectors
-│   │   │   ├── settings/page.tsx         # Currency & Profile Preferences
+│   │   │   ├── settings/page.tsx         # Currency, Profile & Account Status Card
 │   │   │   └── layout.tsx                # Dashboard Layout with Sidebar & Header
 │   │   ├── layout.tsx                    # Root Layout with Fonts & Providers
 │   │   └── globals.css                   # Tailwind CSS v4 Theme Variables
 │   ├── components/                       # Shared UI Components (Buttons, Dialogs, Cards, Badges)
+│   │   ├── auth/AuthGuard.tsx            # Unverified & Unauthenticated Route Interceptor
+│   │   └── layout/                       # Header & Sidebar with Account Type Indicators
 │   ├── features/                         # Feature-Driven State, Hooks & Utilities
-│   │   ├── auth/                         # AuthContext, Token Storage, Password Tools, Verification
-│   │   ├── accounts/                     # Accounts Hooks & Modals
-│   │   ├── transactions/                 # Transaction Forms & Filter Logic
-│   │   ├── budgets/                      # Budget Modal & Progress Math
-│   │   └── dashboard/                    # Chart Cards & Metric Summaries
-│   └── lib/                              # API Client, Currency Formatters & Styling Helpers
+│   │   ├── auth/                         # AuthContext, API, Types & Unit Tests
+│   │   ├── accounts/                     # Clean Accounts Context & Hooks
+│   │   ├── transactions/                 # Clean Transactions Context & Forms
+│   │   ├── budgets/                      # Clean Budgets Context & Progress Math
+│   │   ├── dashboard/                    # Chart Cards with Clean Empty States
+│   │   └── settings/                     # Profile, Preferences & AccountStatusCard
+│   └── lib/                              # storage-adapter.ts, API Client, Formatters
 │
 ├── README.md                             # Project Documentation & Readiness Guide
 └── package.json                          # Frontend Dependencies & Scripts
@@ -204,6 +213,12 @@ money-manager/
 ---
 
 ## 🧪 Testing & Quality Assurance
+
+### Run Frontend Unit Tests
+```bash
+npm test
+```
+*Executes 9 unit tests covering storage key isolation, Instant Demo independence, strong password validation, 6-digit OTP code validation, and account badge indicators.*
 
 ### Run Frontend Type Checks
 ```bash
@@ -216,7 +231,7 @@ npx tsc --noEmit
 cd backend
 npm test
 ```
-*Executes all 26 unit tests across 7 test suites covering Auth, Accounts, Transactions, Budgets, Categories, Dashboard, and Health.*
+*Executes all 35 unit tests across 8 test suites covering Auth (email verification, expiration, unverified blocks), Accounts, Transactions, Budgets, Categories, Dashboard, Users, and Health.*
 
 ### Build Backend for Production
 ```bash
@@ -232,12 +247,14 @@ All endpoints are prefixed with `/api/v1` and documented in Swagger at `http://l
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/auth/register` | Register new account & auto-seed default categories | No |
-| `POST` | `/auth/login` | Authenticate user & issue access + refresh tokens | No |
+| `POST` | `/auth/register` | Register new account & generate verification code | No |
+| `POST` | `/auth/verify-email` | Verify email with 6-digit code or direct token | No |
+| `POST` | `/auth/resend-verification` | Resend fresh 6-digit verification code | No |
+| `POST` | `/auth/login` | Authenticate user (blocks unverified with 403) | No |
 | `POST` | `/auth/refresh` | Rotate expired access token using refresh token | No |
 | `POST` | `/auth/logout` | Revoke active refresh token | Yes (Bearer) |
 | `GET` | `/auth/me` | Fetch authenticated user profile | Yes (Bearer) |
-| `GET` | `/accounts` | Retrieve all active accounts & calculated balances | Yes (Bearer) |
+| `GET` | `/accounts` | Retrieve active accounts & calculated balances | Yes (Bearer) |
 | `POST` | `/accounts` | Create new bank, cash, or mobile wallet account | Yes (Bearer) |
 | `GET` | `/transactions` | List filtered transactions by month, type, or account | Yes (Bearer) |
 | `POST` | `/transactions` | Record income, expense, or atomic account transfer | Yes (Bearer) |

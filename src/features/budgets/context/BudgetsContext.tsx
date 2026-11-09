@@ -5,7 +5,6 @@ import { format, addMonths, subMonths, parse } from 'date-fns';
 import type { Budget, Category } from '@/types/finance';
 import {
   budgetsService,
-  INITIAL_MOCK_BUDGETS,
   type CreateBudgetDto,
   type UpdateBudgetDto,
 } from '../api/budgets-service';
@@ -57,8 +56,8 @@ export function BudgetsProvider({ children }: { children: React.ReactNode }) {
   const { transactions } = useTransactions();
   const { categories } = useCategories();
 
-  const [budgets, setBudgets] = useState<Budget[]>(INITIAL_MOCK_BUDGETS);
-  const [selectedMonth, setSelectedMonth] = useState<string>('2026-10');
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => format(new Date(), 'yyyy-MM'));
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 

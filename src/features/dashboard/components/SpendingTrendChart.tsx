@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
+import { TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import type { MonthlyTrendPoint } from '@/types/finance';
 import { formatCurrency } from '@/lib/formatters';
@@ -19,6 +20,8 @@ interface SpendingTrendChartProps {
 }
 
 export function SpendingTrendChart({ data }: SpendingTrendChartProps) {
+  const hasData = data.some((d) => d.income > 0 || d.expense > 0);
+
   return (
     <Card className="col-span-1 lg:col-span-2">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -28,8 +31,17 @@ export function SpendingTrendChart({ data }: SpendingTrendChartProps) {
         </div>
       </CardHeader>
       <CardContent className="pt-4">
-        <div className="h-[280px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        {!hasData ? (
+          <div className="h-[280px] w-full flex flex-col items-center justify-center border border-dashed border-border/80 rounded-xl p-6 text-center bg-muted/10">
+            <TrendingUp className="size-10 text-muted-foreground/40 mb-3" />
+            <p className="text-sm font-semibold text-foreground">No cash flow trend yet</p>
+            <p className="text-xs text-muted-foreground max-w-sm mt-1">
+              Add transactions over time to see monthly comparisons of income versus expenditures.
+            </p>
+          </div>
+        ) : (
+          <div className="h-[280px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={data}
               margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
@@ -110,6 +122,7 @@ export function SpendingTrendChart({ data }: SpendingTrendChartProps) {
             </AreaChart>
           </ResponsiveContainer>
         </div>
+        )}
       </CardContent>
     </Card>
   );

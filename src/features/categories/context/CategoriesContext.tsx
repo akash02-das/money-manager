@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import type { Category, CategoryType } from '@/types/finance';
-import { MOCK_CATEGORIES } from '@/mocks/finance-data';
+import { DEFAULT_APP_CATEGORIES } from '@/lib/storage-adapter';
 import { categoriesService, type CreateCategoryDto, type UpdateCategoryDto } from '../api/categories-service';
 import { MONEY_MANAGER_STORAGE_SYNC_EVENT } from '@/features/settings/api/settings-service';
 
@@ -29,7 +29,7 @@ interface CategoriesContextValue {
 const CategoriesContext = createContext<CategoriesContextValue | undefined>(undefined);
 
 export function CategoriesProvider({ children }: { children: React.ReactNode }) {
-  const [categories, setCategories] = useState<Category[]>(MOCK_CATEGORIES);
+  const [categories, setCategories] = useState<Category[]>(DEFAULT_APP_CATEGORIES);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 

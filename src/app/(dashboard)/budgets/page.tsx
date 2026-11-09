@@ -5,6 +5,8 @@ export const metadata = {
   description: 'Set monthly category budgets and track live spending limits in BDT.',
 };
 
+export const instant = false;
+
 export default function BudgetsPage() {
   return <BudgetsListView />;
 }

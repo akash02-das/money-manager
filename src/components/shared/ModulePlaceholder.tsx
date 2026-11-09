@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ArrowLeft, Clock, LucideIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 interface ModulePlaceholderProps {
@@ -50,10 +50,13 @@ export function ModulePlaceholder({
           </div>
 
           <div className="flex justify-center pt-2">
-            <Button variant="outline" size="sm" render={<Link href="/" />}>
+            <Link
+              href="/"
+              className={buttonVariants({ variant: 'outline', size: 'sm' })}
+            >
               <ArrowLeft className="size-4 mr-2" />
-              Return to Dashboard
-            </Button>
+              <span>Return to Dashboard</span>
+            </Link>
           </div>
         </CardContent>
       </Card>

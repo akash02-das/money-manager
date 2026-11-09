@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { format } from 'date-fns';
-import { PlusCircle, ChevronDown, User, Settings, LogOut, Check, LogIn, Database, Wifi } from 'lucide-react';
+import { PlusCircle, ChevronDown, User, Settings, LogOut, Check, LogIn, Database, Wifi, ShieldCheck, HardDrive, CloudCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MobileNav } from '@/components/layout/MobileNav';
 import {
@@ -55,7 +55,7 @@ export function Header() {
   const pathname = usePathname();
   const { openCreateModal } = useTransactions();
   const { profile, preferences } = useSettings();
-  const { user, isAuthenticated, isBackendConnected, logout } = useAuth();
+  const { user, isAuthenticated, isBackendConnected, isDemo, isVerified, accountType, logout } = useAuth();
   const [todayFormatted, setTodayFormatted] = useState<string>('');
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
 
@@ -99,14 +99,30 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-2 md:gap-3">
-          {/* Backend Status Indicator */}
-          {isAuthenticated ? (
+          {/* Account Type Indicator Badge */}
+          {isDemo ? (
             <Badge
               variant="outline"
-              className="hidden lg:flex items-center gap-1.5 border-emerald-500/30 bg-emerald-50/50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 text-[11px]"
+              className="flex items-center gap-1.5 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs px-2.5 py-1"
+              title="Local Account: Stored only in this browser"
             >
-              <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>API Connected</span>
+              <HardDrive className="size-3 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="font-semibold">Local Account</span>
+              <span className="hidden xl:inline text-[10px] text-muted-foreground font-normal">
+                (Browser Storage Only)
+              </span>
+            </Badge>
+          ) : isVerified ? (
+            <Badge
+              variant="outline"
+              className="flex items-center gap-1.5 border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs px-2.5 py-1"
+              title="Verified Account: Synced securely with cloud backend"
+            >
+              <CloudCheck className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="font-semibold">Verified Account</span>
+              <span className="hidden xl:inline text-[10px] text-muted-foreground font-normal">
+                (Cloud Synchronized)
+              </span>
             </Badge>
           ) : isBackendConnected ? (
             <Badge
@@ -168,11 +184,27 @@ export function Header() {
                   </button>
                 }
               />
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" className="w-64">
                 <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium text-foreground">{displayName}</p>
-                    <p className="text-xs text-muted-foreground">{displayEmail}</p>
+                  <div className="flex flex-col space-y-1.5 pb-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-foreground truncate">{displayName}</p>
+                      {isDemo ? (
+                        <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[10px] font-semibold shrink-0">
+                          Local Account
+                        </Badge>
+                      ) : isVerified ? (
+                        <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold shrink-0">
+                          Verified
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
+                    <p className="text-[11px] text-muted-foreground/85 leading-snug pt-0.5">
+                      {isDemo
+                        ? '💾 Stored only in this browser (LocalStorage).'
+                        : '☁️ Synced to PostgreSQL cloud database.'}
+                    </p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />

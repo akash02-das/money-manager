@@ -174,18 +174,6 @@ export function BudgetsListView() {
             </Button>
           </div>
 
-          {/* Quick Demo Reset */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={resetToDefault}
-            title="Reset to default mock budgets"
-            className="cursor-pointer gap-1.5 text-xs text-muted-foreground hover:text-foreground h-9"
-          >
-            <RotateCcw className="size-3.5" />
-            <span className="hidden sm:inline">Reset Demo</span>
-          </Button>
-
           {/* Add Category Budget CTA */}
           <Button
             size="sm"
@@ -300,14 +288,6 @@ export function BudgetsListView() {
             <Button onClick={handleOpenCreate} className="gap-2 cursor-pointer">
               <Plus className="size-4" />
               <span>Set First Category Budget</span>
-            </Button>
-            <Button
-              variant="outline"
-              onClick={resetToDefault}
-              className="gap-2 cursor-pointer"
-            >
-              <RotateCcw className="size-4" />
-              <span>Seed Sample Budgets</span>
             </Button>
           </div>
         </div>

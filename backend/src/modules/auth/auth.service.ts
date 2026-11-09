@@ -4,6 +4,8 @@ import {
   UnauthorizedException,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -12,6 +14,8 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { CategoryType } from '@prisma/client';
 
 const DISPOSABLE_DOMAINS = new Set([
@@ -101,6 +105,8 @@ const DEFAULT_CATEGORIES = [
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -109,6 +115,37 @@ export class AuthService {
 
   private hashToken(token: string): string {
     return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
+  /**
+   * Generates a 6-digit OTP code and secure UUID token for email verification.
+   * Expires in 15 minutes.
+   */
+  private async generateVerificationCodeAndToken(userId: string, email: string) {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const token = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+
+    // Invalidate prior unused codes for this user
+    await this.prisma.emailVerification.updateMany({
+      where: { userId, isUsed: false },
+      data: { isUsed: true },
+    });
+
+    const verification = await this.prisma.emailVerification.create({
+      data: {
+        userId,
+        code,
+        token,
+        expiresAt,
+      },
+    });
+
+    this.logger.log(
+      `📬 [EMAIL VERIFICATION DISPATCH] To: ${email} | Code: ${code} | Link: http://localhost:3000/verify-email?token=${token}`,
+    );
+
+    return verification;
   }
 
   async register(dto: RegisterDto) {
@@ -135,10 +172,11 @@ export class AuthService {
       const createdUser = await tx.user.create({
         data: {
           name: dto.name.trim(),
-          email: dto.email.toLowerCase().trim(),
+          email: normalizedEmail,
           passwordHash,
           currency: dto.currency || 'BDT',
           location: dto.location,
+          isEmailVerified: false,
         },
       });
 
@@ -153,19 +191,28 @@ export class AuthService {
       return createdUser;
     });
 
-    const tokens = await this.generateTokens(user.id, user.email);
-    await this.saveRefreshToken(user.id, tokens.refreshToken);
+    const verification = await this.generateVerificationCodeAndToken(user.id, user.email);
 
     const { passwordHash: _, ...userSafe } = user;
     return {
+      success: true,
+      message:
+        'Account created! A verification code has been dispatched to your email address. Please verify to access your dashboard.',
+      email: user.email,
+      isEmailVerified: false,
       user: userSafe,
-      ...tokens,
+      verificationPreview: {
+        code: verification.code,
+        token: verification.token,
+        expiresAt: verification.expiresAt,
+      },
     };
   }
 
   async login(dto: LoginDto) {
+    const normalizedEmail = dto.email.toLowerCase().trim();
     const user = await this.prisma.user.findUnique({
-      where: { email: dto.email.toLowerCase().trim() },
+      where: { email: normalizedEmail },
     });
 
     if (!user) {
@@ -177,6 +224,25 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
+    // Strict access control: Unverified accounts MUST NOT access the dashboard
+    if (!user.isEmailVerified) {
+      const verification = await this.generateVerificationCodeAndToken(user.id, user.email);
+
+      throw new ForbiddenException({
+        statusCode: 403,
+        error: 'EMAIL_NOT_VERIFIED',
+        message:
+          'Your email address has not been verified. Please enter the verification code sent to your inbox to unlock your dashboard.',
+        email: user.email,
+        isEmailVerified: false,
+        verificationPreview: {
+          code: verification.code,
+          token: verification.token,
+          expiresAt: verification.expiresAt,
+        },
+      });
+    }
+
     const tokens = await this.generateTokens(user.id, user.email);
     await this.saveRefreshToken(user.id, tokens.refreshToken);
 
@@ -184,6 +250,110 @@ export class AuthService {
     return {
       user: userSafe,
       ...tokens,
+    };
+  }
+
+  async verifyEmail(dto: VerifyEmailDto) {
+    let verification: any = null;
+
+    if (dto.token) {
+      verification = await this.prisma.emailVerification.findUnique({
+        where: { token: dto.token.trim() },
+        include: { user: true },
+      });
+    } else if (dto.email && dto.code) {
+      const user = await this.prisma.user.findUnique({
+        where: { email: dto.email.toLowerCase().trim() },
+      });
+
+      if (user) {
+        verification = await this.prisma.emailVerification.findFirst({
+          where: {
+            userId: user.id,
+            code: dto.code.trim(),
+          },
+          orderBy: { createdAt: 'desc' },
+          include: { user: true },
+        });
+      }
+    } else {
+      throw new BadRequestException(
+        'Please provide your email and 6-digit verification code, or a valid verification token.',
+      );
+    }
+
+    if (!verification) {
+      throw new BadRequestException('Invalid or unknown verification code. Please check and try again.');
+    }
+
+    if (verification.isUsed) {
+      throw new BadRequestException('This verification link or code has already been used.');
+    }
+
+    if (verification.expiresAt < new Date()) {
+      throw new BadRequestException(
+        'This verification code or link has expired. Please request a fresh verification code.',
+      );
+    }
+
+    // Mark code as consumed and mark user as verified
+    await this.prisma.$transaction([
+      this.prisma.emailVerification.update({
+        where: { id: verification.id },
+        data: { isUsed: true },
+      }),
+      this.prisma.user.update({
+        where: { id: verification.userId },
+        data: { isEmailVerified: true },
+      }),
+    ]);
+
+    const verifiedUser = await this.prisma.user.findUnique({
+      where: { id: verification.userId },
+    });
+
+    if (!verifiedUser) {
+      throw new NotFoundException('User account not found.');
+    }
+
+    const tokens = await this.generateTokens(verifiedUser.id, verifiedUser.email);
+    await this.saveRefreshToken(verifiedUser.id, tokens.refreshToken);
+
+    const { passwordHash: _, ...userSafe } = verifiedUser;
+
+    return {
+      success: true,
+      message: 'Email successfully verified! Welcome to your financial dashboard.',
+      user: userSafe,
+      ...tokens,
+    };
+  }
+
+  async resendVerification(dto: ResendVerificationDto) {
+    const normalizedEmail = dto.email.toLowerCase().trim();
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!user) {
+      throw new NotFoundException('No account found with this email address.');
+    }
+
+    if (user.isEmailVerified) {
+      throw new BadRequestException('This email is already verified. You can log in directly.');
+    }
+
+    const verification = await this.generateVerificationCodeAndToken(user.id, user.email);
+
+    return {
+      success: true,
+      message: 'A fresh verification code has been dispatched to your email address.',
+      email: user.email,
+      verificationPreview: {
+        code: verification.code,
+        token: verification.token,
+        expiresAt: verification.expiresAt,
+      },
     };
   }
 

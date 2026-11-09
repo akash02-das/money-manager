@@ -15,6 +15,8 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser, type AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -50,15 +52,33 @@ export class AuthController {
 
   @Public()
   @Post('register')
-  @ApiOperation({ summary: 'Register a new user account' })
-  @ApiResponse({ status: HttpStatus.CREATED, description: 'User successfully created' })
-  async register(
-    @Body() dto: RegisterDto,
+  @ApiOperation({ summary: 'Register a new user account (verification required)' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'User created; verification code dispatched' })
+  async register(@Body() dto: RegisterDto) {
+    return this.authService.register(dto);
+  }
+
+  @Public()
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify registered account email with 6-digit code or link token' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Email verified; tokens issued' })
+  async verifyEmail(
+    @Body() dto: VerifyEmailDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.authService.register(dto);
+    const result = await this.authService.verifyEmail(dto);
     this.setTokenCookies(res, result.accessToken, result.refreshToken);
     return result;
+  }
+
+  @Public()
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Resend email verification code' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Fresh verification code dispatched' })
+  async resendVerification(@Body() dto: ResendVerificationDto) {
+    return this.authService.resendVerification(dto);
   }
 
   @Public()

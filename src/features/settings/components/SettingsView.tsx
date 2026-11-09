@@ -12,6 +12,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ProfileSettingsCard } from './ProfileSettingsCard';
+import { AccountStatusCard } from './AccountStatusCard';
 import { PreferencesCard } from './PreferencesCard';
 import { AppearanceCard } from './AppearanceCard';
 import { DataManagementCard } from './DataManagementCard';
@@ -93,6 +94,7 @@ export function SettingsView() {
 
         {/* Tab 1: Profile */}
         <TabsContent value="profile" className="space-y-6">
+          <AccountStatusCard />
           <ProfileSettingsCard />
         </TabsContent>
 

@@ -5,6 +5,8 @@ export const metadata = {
   description: 'Manage bank accounts, mobile wallets, and cash reserves in BDT.',
 };
 
+export const instant = false;
+
 export default function AccountsPage() {
   return <AccountsListView />;
 }

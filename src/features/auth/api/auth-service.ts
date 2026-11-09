@@ -2,22 +2,18 @@ import { apiClient, tokenStorage } from '@/lib/api-client';
 import type {
   User,
   AuthResponse,
+  RegisterResponse,
   LoginCredentials,
   RegisterData,
+  VerifyEmailData,
+  ResendVerificationData,
 } from '../types';
 
 export const authService = {
-  async register(data: RegisterData): Promise<AuthResponse> {
-    const res = await apiClient.post<AuthResponse>('/auth/register', data, {
+  async register(data: RegisterData): Promise<RegisterResponse> {
+    return await apiClient.post<RegisterResponse>('/auth/register', data, {
       skipAuth: true,
     });
-    if (res?.accessToken) {
-      tokenStorage.setAccessToken(res.accessToken);
-      if (res.refreshToken) {
-        tokenStorage.setRefreshToken(res.refreshToken);
-      }
-    }
-    return res;
   },
 
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
@@ -30,7 +26,32 @@ export const authService = {
         tokenStorage.setRefreshToken(res.refreshToken);
       }
     }
+    if (res?.user) {
+      res.user.accountType = 'VERIFIED';
+    }
     return res;
+  },
+
+  async verifyEmail(data: VerifyEmailData): Promise<AuthResponse> {
+    const res = await apiClient.post<AuthResponse>('/auth/verify-email', data, {
+      skipAuth: true,
+    });
+    if (res?.accessToken) {
+      tokenStorage.setAccessToken(res.accessToken);
+      if (res.refreshToken) {
+        tokenStorage.setRefreshToken(res.refreshToken);
+      }
+    }
+    if (res?.user) {
+      res.user.accountType = 'VERIFIED';
+    }
+    return res;
+  },
+
+  async resendVerification(data: ResendVerificationData): Promise<any> {
+    return await apiClient.post('/auth/resend-verification', data, {
+      skipAuth: true,
+    });
   },
 
   async logout(): Promise<void> {
@@ -49,7 +70,11 @@ export const authService = {
     if (!token) return null;
 
     try {
-      return await apiClient.get<User>('/auth/me');
+      const user = await apiClient.get<User>('/auth/me');
+      if (user) {
+        user.accountType = 'VERIFIED';
+      }
+      return user;
     } catch {
       return null;
     }
@@ -59,4 +84,3 @@ export const authService = {
     return !!tokenStorage.getAccessToken();
   },
 };
-

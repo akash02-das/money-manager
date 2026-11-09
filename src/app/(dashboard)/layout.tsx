@@ -8,6 +8,8 @@ import { BudgetsProvider } from '@/features/budgets/context/BudgetsContext';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 
+export const instant = false;
+
 export default function DashboardLayout({
   children,
 }: {

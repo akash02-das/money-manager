@@ -5,6 +5,8 @@ export const metadata = {
   description: 'Manage your profile, currency preferences, dark/light theme, and financial data backups.',
 };
 
+export const instant = false;
+
 export default function SettingsPage() {
   return <SettingsView />;
 }

@@ -111,13 +111,21 @@ export default function RegisterPage() {
     setIsSubmitting(true);
 
     try {
-      await register({
+      const res = await register({
         name: name.trim(),
         email: email.trim(),
         password,
         currency,
       });
-      router.push('/');
+
+      if (typeof window !== 'undefined' && res?.verificationPreview) {
+        sessionStorage.setItem(
+          'mm_last_verification_preview',
+          JSON.stringify({ email: email.trim(), code: res.verificationPreview.code }),
+        );
+      }
+
+      router.push(`/verify-email?email=${encodeURIComponent(email.trim())}`);
     } catch (err: any) {
       setServerError(
         err?.message || 'Could not complete registration. Please check your information.',
@@ -127,17 +135,10 @@ export default function RegisterPage() {
     }
   };
 
-  const handleDemoSignIn = async () => {
+  const handleDemoSignIn = () => {
     setServerError(null);
-    setIsSubmitting(true);
-    try {
-      await loginAsDemo();
-      router.push('/');
-    } catch (err: any) {
-      setServerError(err?.message || 'Could not launch instant demo session.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    loginAsDemo();
+    router.push('/');
   };
 
   return (
@@ -320,17 +321,23 @@ export default function RegisterPage() {
         </div>
 
         {/* Instant Demo Button */}
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          className="w-full gap-2 border-emerald-500/30 text-emerald-600 hover:bg-emerald-50/70 dark:text-emerald-400 dark:hover:bg-emerald-950/40 cursor-pointer font-medium"
-          onClick={handleDemoSignIn}
-          disabled={isSubmitting}
-        >
-          <Sparkles className="size-4 text-emerald-500" />
-          <span>⚡ Launch Instant Demo Session</span>
-        </Button>
+        <div className="space-y-1.5 text-center">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="w-full gap-2 border-emerald-500/30 text-emerald-600 hover:bg-emerald-50/70 dark:text-emerald-400 dark:hover:bg-emerald-950/40 cursor-pointer font-medium"
+            onClick={handleDemoSignIn}
+            disabled={isSubmitting}
+          >
+            <Sparkles className="size-4 text-emerald-500" />
+            <span>⚡ Jump in with Instant Demo</span>
+          </Button>
+          <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+            <ShieldCheck className="size-3 text-emerald-500" />
+            <span>Local Account — Stored only in this browser</span>
+          </p>
+        </div>
       </CardContent>
 
       <CardFooter className="flex justify-center border-t border-border/40 bg-muted/20 py-3.5">

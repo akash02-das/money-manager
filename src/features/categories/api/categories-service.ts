@@ -1,12 +1,7 @@
 import type { Category, CategoryType } from '@/types/finance';
-import { MOCK_CATEGORIES, MOCK_TRANSACTIONS } from '@/mocks/finance-data';
-import { INITIAL_MOCK_BUDGETS } from '@/features/budgets/api/budgets-service';
 import type { CategoryFormData } from '../schemas/category-schema';
 import { apiClient, tokenStorage } from '@/lib/api-client';
-
-const STORAGE_KEY = 'money_manager_categories_v1';
-const TRANSACTIONS_STORAGE_KEY = 'money_manager_transactions_v1';
-const BUDGETS_STORAGE_KEY = 'money_manager_budgets_v1';
+import { getEntityStorageKey, DEFAULT_APP_CATEGORIES } from '@/lib/storage-adapter';
 
 export interface CreateCategoryDto extends CategoryFormData {}
 export interface UpdateCategoryDto extends Partial<CategoryFormData> {
@@ -16,7 +11,8 @@ export interface UpdateCategoryDto extends Partial<CategoryFormData> {
 function getStoredTransactionReferences(): { categoryId: string }[] {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(TRANSACTIONS_STORAGE_KEY);
+    const key = getEntityStorageKey('TRANSACTIONS');
+    const raw = localStorage.getItem(key);
     if (!raw) return [];
     return JSON.parse(raw);
   } catch {
@@ -27,7 +23,8 @@ function getStoredTransactionReferences(): { categoryId: string }[] {
 function getStoredBudgetReferences(): { categoryId: string }[] {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(BUDGETS_STORAGE_KEY);
+    const key = getEntityStorageKey('BUDGETS');
+    const raw = localStorage.getItem(key);
     if (!raw) return [];
     return JSON.parse(raw);
   } catch {
@@ -37,26 +34,28 @@ function getStoredBudgetReferences(): { categoryId: string }[] {
 
 function getStoredCategories(): Category[] {
   if (typeof window === 'undefined') {
-    return MOCK_CATEGORIES;
+    return DEFAULT_APP_CATEGORIES;
   }
 
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const key = getEntityStorageKey('CATEGORIES');
+    const raw = localStorage.getItem(key);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(MOCK_CATEGORIES));
-      return MOCK_CATEGORIES;
+      localStorage.setItem(key, JSON.stringify(DEFAULT_APP_CATEGORIES));
+      return DEFAULT_APP_CATEGORIES;
     }
     return JSON.parse(raw) as Category[];
   } catch (error) {
     console.error('Failed to load categories from storage:', error);
-    return MOCK_CATEGORIES;
+    return DEFAULT_APP_CATEGORIES;
   }
 }
 
 function setStoredCategories(categories: Category[]): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(categories));
+    const key = getEntityStorageKey('CATEGORIES');
+    localStorage.setItem(key, JSON.stringify(categories));
   } catch (error) {
     console.error('Failed to save categories to storage:', error);
   }
@@ -223,9 +222,7 @@ export const categoriesService = {
   },
 
   async resetToDefault(): Promise<Category[]> {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(MOCK_CATEGORIES));
-    }
-    return MOCK_CATEGORIES;
+    setStoredCategories(DEFAULT_APP_CATEGORIES);
+    return DEFAULT_APP_CATEGORIES;
   },
 };

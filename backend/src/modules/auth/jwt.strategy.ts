@@ -42,11 +42,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         currency: true,
         location: true,
         monthlySavingsTarget: true,
+        isEmailVerified: true,
       },
     });
 
     if (!user) {
       throw new UnauthorizedException('User account no longer exists.');
+    }
+
+    if (!user.isEmailVerified) {
+      throw new UnauthorizedException('Email verification required.');
     }
 
     return user;

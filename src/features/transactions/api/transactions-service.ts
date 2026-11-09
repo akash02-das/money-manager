@@ -1,11 +1,8 @@
 import type { Transaction, Account, Category, TransactionType } from '@/types/finance';
-import { MOCK_TRANSACTIONS } from '@/mocks/finance-data';
 import type { TransactionFormData } from '../schemas/transaction-schema';
 import { roundCurrency } from '@/lib/formatters';
 import { apiClient, tokenStorage } from '@/lib/api-client';
-
-const STORAGE_KEY = 'money_manager_transactions_v1';
-const ACCOUNTS_STORAGE_KEY = 'money_manager_accounts_v1';
+import { getEntityStorageKey } from '@/lib/storage-adapter';
 
 export interface CreateTransactionDto extends TransactionFormData {}
 export interface UpdateTransactionDto extends Partial<TransactionFormData> {}
@@ -16,7 +13,8 @@ function getStoredTransactions(): Transaction[] {
   }
 
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const key = getEntityStorageKey('TRANSACTIONS');
+    const raw = localStorage.getItem(key);
     if (!raw) {
       return [];
     }
@@ -30,7 +28,8 @@ function getStoredTransactions(): Transaction[] {
 function setStoredTransactions(transactions: Transaction[]): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+    const key = getEntityStorageKey('TRANSACTIONS');
+    localStorage.setItem(key, JSON.stringify(transactions));
   } catch (error) {
     console.error('Failed to save transactions to storage:', error);
   }
@@ -39,7 +38,8 @@ function setStoredTransactions(transactions: Transaction[]): void {
 function saveUpdatedAccounts(accounts: Account[]): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+    const key = getEntityStorageKey('ACCOUNTS');
+    localStorage.setItem(key, JSON.stringify(accounts));
   } catch (error) {
     console.error('Failed to update accounts in storage:', error);
   }
@@ -342,9 +342,7 @@ export const transactionsService = {
   },
 
   async resetToDefault(): Promise<Transaction[]> {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(MOCK_TRANSACTIONS));
-    }
-    return MOCK_TRANSACTIONS;
+    setStoredTransactions([]);
+    return [];
   },
 };

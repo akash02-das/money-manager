@@ -1,3 +1,4 @@
+import { PieChart } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import type { CategorySpending } from '@/types/finance';
 import { formatCurrency } from '@/lib/formatters';
@@ -18,8 +19,12 @@ export function CategoryBreakdownCard({ categories, monthLabel }: CategoryBreakd
       </CardHeader>
       <CardContent className="space-y-4">
         {categories.length === 0 ? (
-          <div className="py-12 text-center text-xs text-muted-foreground">
-            No expense transactions recorded for this period.
+          <div className="flex flex-col items-center justify-center py-10 px-4 text-center border border-dashed border-border/70 rounded-xl bg-muted/10">
+            <PieChart className="size-8 text-muted-foreground/40 mb-2" />
+            <p className="text-xs font-semibold text-foreground">No category expenses yet</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5 max-w-[200px]">
+              No expense transactions recorded for this period. Add an expense to see breakdown.
+            </p>
           </div>
         ) : (
           categories.map((cat) => (

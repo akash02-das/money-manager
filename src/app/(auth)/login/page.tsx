@@ -112,31 +112,35 @@ export default function LoginPage() {
       await login({ email: email.trim(), password });
       router.push('/');
     } catch (err: any) {
+      if (
+        err?.error === 'EMAIL_NOT_VERIFIED' ||
+        err?.message?.includes('not been verified') ||
+        err?.message?.includes('verification code')
+      ) {
+        if (typeof window !== 'undefined' && err?.verificationPreview) {
+          sessionStorage.setItem(
+            'mm_last_verification_preview',
+            JSON.stringify({ email: email.trim(), code: err.verificationPreview.code }),
+          );
+        }
+        router.push(`/verify-email?email=${encodeURIComponent(email.trim())}`);
+        return;
+      }
+
       setServerError(
         err?.message ||
-          'Email and password combination didn’t match. Want to try again or take a test drive as Demo?',
+          'Email and password combination did not match. Please verify your credentials or jump in as Demo.',
       );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDemoLogin = async () => {
+  const handleDemoLogin = () => {
     setServerError(null);
     setFieldErrors({});
-    setIsSubmitting(true);
-
-    try {
-      await loginAsDemo();
-      router.push('/');
-    } catch (err: any) {
-      setServerError(
-        err?.message ||
-          'Could not start instant demo session. Please try again.',
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
+    loginAsDemo();
+    router.push('/');
   };
 
   return (
@@ -359,11 +363,11 @@ export default function LoginPage() {
             disabled={isSubmitting}
           >
             <Sparkles className="size-4 text-emerald-500" />
-            <span>⚡ Jump In with Instant Demo</span>
+            <span>⚡ Jump in with Instant Demo</span>
           </Button>
           <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
             <ShieldCheck className="size-3 text-emerald-500" />
-            <span>Zero setup required — explore features immediately</span>
+            <span>Local Account — Stored only in this browser</span>
           </p>
         </div>
       </CardContent>

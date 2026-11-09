@@ -5,6 +5,8 @@ export const metadata = {
   description: 'Manage income and expense categories, customize icons and colors.',
 };
 
+export const instant = false;
+
 export default function CategoriesPage() {
   return <CategoriesListView />;
 }
