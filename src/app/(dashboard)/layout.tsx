@@ -1,3 +1,5 @@
+import { AuthProvider } from '@/features/auth/context/AuthContext';
+import { AuthGuard } from '@/components/auth/AuthGuard';
 import { SettingsProvider } from '@/features/settings/context/SettingsContext';
 import { AccountsProvider } from '@/features/accounts/context/AccountsContext';
 import { CategoriesProvider } from '@/features/categories/context/CategoriesContext';
@@ -12,30 +14,34 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <SettingsProvider>
-      <AccountsProvider>
-        <CategoriesProvider>
-          <TransactionsProvider>
-            <BudgetsProvider>
-              <div className="flex min-h-screen w-full bg-background">
-                {/* Fixed Desktop Sidebar */}
-                <Sidebar />
+    <AuthProvider>
+      <AuthGuard>
+        <SettingsProvider>
+          <AccountsProvider>
+            <CategoriesProvider>
+              <TransactionsProvider>
+                <BudgetsProvider>
+                  <div className="flex min-h-screen w-full bg-background">
+                    {/* Fixed Desktop Sidebar */}
+                    <Sidebar />
 
-                {/* Main Content Area */}
-                <div className="flex flex-1 flex-col overflow-hidden">
-                  {/* Top Sticky Header */}
-                  <Header />
+                    {/* Main Content Area */}
+                    <div className="flex flex-1 flex-col overflow-hidden">
+                      {/* Top Sticky Header */}
+                      <Header />
 
-                  {/* Scrollable Page Body */}
-                  <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
-                    <div className="mx-auto max-w-7xl">{children}</div>
-                  </main>
-                </div>
-              </div>
-            </BudgetsProvider>
-          </TransactionsProvider>
-        </CategoriesProvider>
-      </AccountsProvider>
-    </SettingsProvider>
+                      {/* Scrollable Page Body */}
+                      <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
+                        <div className="mx-auto max-w-7xl">{children}</div>
+                      </main>
+                    </div>
+                  </div>
+                </BudgetsProvider>
+              </TransactionsProvider>
+            </CategoriesProvider>
+          </AccountsProvider>
+        </SettingsProvider>
+      </AuthGuard>
+    </AuthProvider>
   );
 }

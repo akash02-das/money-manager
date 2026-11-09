@@ -1,0 +1,172 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ---------------------------------------------------------
+// ENUMS
+// ---------------------------------------------------------
+
+enum Currency {
+  BDT
+  USD
+  EUR
+  GBP
+}
+
+enum AccountType {
+  CASH
+  BANK
+  MOBILE_WALLET
+  CREDIT_CARD
+  SAVINGS
+  OTHER
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+// ---------------------------------------------------------
+// MODELS
+// ---------------------------------------------------------
+
+model User {
+  id                   String         @id @default(uuid())
+  name                 String         @db.VarChar(100)
+  email                String         @unique @db.VarChar(150)
+  passwordHash         String         @map("password_hash") @db.VarChar(255)
+  currency             Currency       @default(BDT)
+  location             String?        @db.VarChar(100)
+  monthlySavingsTarget Decimal        @default(0.00) @map("monthly_savings_target") @db.Decimal(15, 2)
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt @map("updated_at")
+
+  // Relationships
+  accounts             Account[]
+  categories           Category[]
+  transactions         Transaction[]
+  budgets              Budget[]
+  refreshTokens        RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tokenHash String   @unique @map("token_hash") @db.VarChar(255)
+  isRevoked Boolean  @default(false) @map("is_revoked")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Account {
+  id                 String      @id @default(uuid())
+  userId             String      @map("user_id")
+  name               String      @db.VarChar(60)
+  type               AccountType
+  balance            Decimal     @default(0.00) @db.Decimal(15, 2)
+  initialBalance     Decimal     @default(0.00) @map("initial_balance") @db.Decimal(15, 2)
+  currency           Currency    @default(BDT)
+  institution        String?     @db.VarChar(60)
+  accountNumberLast4 String?     @map("account_number_last_4") @db.VarChar(4)
+  color              String      @default("#0284c7") @db.VarChar(20)
+  isArchived         Boolean     @default(false) @map("is_archived")
+  createdAt          DateTime    @default(now()) @map("created_at")
+  updatedAt          DateTime    @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Financial Ledger Relationships
+  // Restrict: Deleting an account referenced in transactions is rejected by the database
+  outgoingTransactions Transaction[] @relation("SourceAccount")
+  incomingTransactions Transaction[] @relation("DestinationAccount")
+
+  @@unique([userId, name])
+  @@index([userId, isArchived])
+  @@map("accounts")
+}
+
+model Category {
+  id         String       @id @default(uuid())
+  userId     String       @map("user_id")
+  name       String       @db.VarChar(60)
+  type       CategoryType
+  icon       String       @db.VarChar(50)
+  color      String       @db.VarChar(20)
+  isDefault  Boolean      @default(false) @map("is_default")
+  isArchived Boolean      @default(false) @map("is_archived")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@unique([userId, name, type])
+  @@index([userId, type, isArchived])
+  @@map("categories")
+}
+
+model Transaction {
+  id          String          @id @default(uuid())
+  userId      String          @map("user_id")
+  accountId   String          @map("account_id")
+  toAccountId String?         @map("to_account_id")
+  categoryId  String?         @map("category_id")
+  type        TransactionType
+  amount      Decimal         @db.Decimal(15, 2)
+  description String          @db.VarChar(120)
+  date        DateTime        @db.Timestamptz
+  notes       String?         @db.VarChar(500)
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account     Account   @relation("SourceAccount", fields: [accountId], references: [id], onDelete: Restrict)
+  toAccount   Account?  @relation("DestinationAccount", fields: [toAccountId], references: [id], onDelete: Restrict)
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@index([userId, date(sort: Desc)])
+  @@index([userId, accountId])
+  @@index([userId, categoryId])
+  @@index([userId, type])
+  @@map("transactions")
+}
+
+model Budget {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  categoryId String   @map("category_id")
+  amount     Decimal  @db.Decimal(15, 2)
+  month      Int      // 1 to 12
+  year       Int      // e.g. 2026
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  // Enforces only one budget cap per category per month per user
+  @@unique([userId, categoryId, year, month])
+  @@index([userId, year, month])
+  @@map("budgets")
+}
+

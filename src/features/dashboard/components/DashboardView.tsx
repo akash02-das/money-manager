@@ -6,6 +6,8 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   PiggyBank,
+  PlusCircle,
+  Sparkles,
 } from 'lucide-react';
 import { parse, format, subMonths } from 'date-fns';
 import { StatCard } from '@/features/dashboard/components/StatCard';
@@ -13,16 +15,17 @@ import { SpendingTrendChart } from '@/features/dashboard/components/SpendingTren
 import { CategoryBreakdownCard } from '@/features/dashboard/components/CategoryBreakdownCard';
 import { RecentTransactionsCard } from '@/features/dashboard/components/RecentTransactionsCard';
 import { AccountsSnapshotCard } from '@/features/dashboard/components/AccountsSnapshotCard';
-import { MOCK_DASHBOARD_METRICS } from '@/mocks/finance-data';
 import { useAccounts } from '@/features/accounts/hooks/useAccounts';
 import { useTransactions } from '@/features/transactions/hooks/useTransactions';
 import { useCategories } from '@/features/categories/hooks/useCategories';
 import { getLocalMonthKey, roundCurrency } from '@/lib/formatters';
 import type { MonthlyTrendPoint, CategorySpending } from '@/types/finance';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 export function DashboardView() {
   const { accounts, totalBalance } = useAccounts();
-  const { transactions, recentTransactions } = useTransactions();
+  const { transactions, recentTransactions, openCreateModal } = useTransactions();
   const { categories } = useCategories();
 
   // Active accounts for the dashboard snapshot
@@ -31,19 +34,21 @@ export function DashboardView() {
     [accounts]
   );
 
-  // 1. Determine active month (newest transaction month or default to 2026-10)
+  // 1. Determine active month (newest transaction month or default to current month)
   const activeMonthKey = useMemo(() => {
-    if (transactions.length === 0) return '2026-10';
+    if (transactions.length === 0) {
+      return format(new Date(), 'yyyy-MM');
+    }
     const sorted = [...transactions].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
     return getLocalMonthKey(sorted[0].date);
   }, [transactions]);
 
-  // Formatted human-readable month string (e.g. "October 2026")
+  // Formatted human-readable month string (e.g. "November 2026")
   const activeMonthLabel = useMemo(() => {
     try {
-      const parsed = parse(`${activeMonthKey}-01`, 'yyyy-MM-dd', new Date(2000, 0, 1));
+      const parsed = parse(`${activeMonthKey}-01`, 'yyyy-MM-dd', new Date());
       return format(parsed, 'MMMM yyyy');
     } catch {
       return activeMonthKey;
@@ -71,14 +76,13 @@ export function DashboardView() {
     let prevMonthDate: Date;
     try {
       prevMonthDate = subMonths(
-        parse(`${activeMonthKey}-01`, 'yyyy-MM-dd', new Date(2000, 0, 1)),
+        parse(`${activeMonthKey}-01`, 'yyyy-MM-dd', new Date()),
         1
       );
     } catch {
-      prevMonthDate = new Date(2000, 8, 1);
+      prevMonthDate = new Date();
     }
     const prevMonthKey = format(prevMonthDate, 'yyyy-MM');
-    const prevMonthLabel = format(prevMonthDate, 'MMM');
 
     const prevTxs = transactions.filter(
       (t) => getLocalMonthKey(t.date) === prevMonthKey
@@ -94,14 +98,6 @@ export function DashboardView() {
       prevExpense = prevTxs
         .filter((t) => t.type === 'EXPENSE')
         .reduce((sum, t) => sum + t.amount, 0);
-    } else {
-      const seedPrev = MOCK_DASHBOARD_METRICS.monthlyTrend.find(
-        (p) => p.month === prevMonthLabel
-      );
-      if (seedPrev) {
-        prevIncome = seedPrev.income;
-        prevExpense = seedPrev.expense;
-      }
     }
 
     const incomeTrend =
@@ -165,9 +161,9 @@ export function DashboardView() {
   const dynamicMonthlyTrend = useMemo<MonthlyTrendPoint[]>(() => {
     let anchorDate: Date;
     try {
-      anchorDate = parse(`${activeMonthKey}-01`, 'yyyy-MM-dd', new Date(2000, 0, 1));
+      anchorDate = parse(`${activeMonthKey}-01`, 'yyyy-MM-dd', new Date());
     } catch {
-      anchorDate = new Date(2000, 9, 1);
+      anchorDate = new Date();
     }
 
     const points: MonthlyTrendPoint[] = [];
@@ -189,13 +185,6 @@ export function DashboardView() {
         expense = txInMonth
           .filter((t) => t.type === 'EXPENSE')
           .reduce((sum, t) => sum + t.amount, 0);
-      } else {
-        // Smooth fallback to baseline seed history for past unrecorded months
-        const seed = MOCK_DASHBOARD_METRICS.monthlyTrend.find((p) => p.month === mLabel);
-        if (seed) {
-          income = seed.income;
-          expense = seed.expense;
-        }
       }
 
       points.push({
@@ -209,8 +198,35 @@ export function DashboardView() {
     return points;
   }, [transactions, activeMonthKey]);
 
+  const isBrandNewUser = accounts.length === 0 && transactions.length === 0;
+
   return (
     <div className="space-y-6">
+      {/* Welcome Banner for Fresh New Users */}
+      {isBrandNewUser && (
+        <div className="relative overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                <Sparkles className="size-5 text-primary animate-pulse" />
+                <span>Welcome to your new financial ledger</span>
+              </h2>
+              <p className="text-xs text-muted-foreground max-w-xl">
+                Your workspace is fresh and clean. Get started by setting up your first account (bank, mobile wallet, or cash) or record an opening balance.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link href="/accounts">
+                <Button size="sm" className="gap-1.5 shadow-sm cursor-pointer">
+                  <PlusCircle className="size-4" />
+                  <span>Add First Account</span>
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* KPI Stats Grid */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard

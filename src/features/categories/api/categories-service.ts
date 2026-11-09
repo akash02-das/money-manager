@@ -2,6 +2,7 @@ import type { Category, CategoryType } from '@/types/finance';
 import { MOCK_CATEGORIES, MOCK_TRANSACTIONS } from '@/mocks/finance-data';
 import { INITIAL_MOCK_BUDGETS } from '@/features/budgets/api/budgets-service';
 import type { CategoryFormData } from '../schemas/category-schema';
+import { apiClient, tokenStorage } from '@/lib/api-client';
 
 const STORAGE_KEY = 'money_manager_categories_v1';
 const TRANSACTIONS_STORAGE_KEY = 'money_manager_transactions_v1';
@@ -16,10 +17,10 @@ function getStoredTransactionReferences(): { categoryId: string }[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(TRANSACTIONS_STORAGE_KEY);
-    if (!raw) return MOCK_TRANSACTIONS;
+    if (!raw) return [];
     return JSON.parse(raw);
   } catch {
-    return MOCK_TRANSACTIONS;
+    return [];
   }
 }
 
@@ -27,16 +28,13 @@ function getStoredBudgetReferences(): { categoryId: string }[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(BUDGETS_STORAGE_KEY);
-    if (!raw) return INITIAL_MOCK_BUDGETS;
+    if (!raw) return [];
     return JSON.parse(raw);
   } catch {
-    return INITIAL_MOCK_BUDGETS;
+    return [];
   }
 }
 
-/**
- * Safely read stored categories from browser localStorage (client-side only)
- */
 function getStoredCategories(): Category[] {
   if (typeof window === 'undefined') {
     return MOCK_CATEGORIES;
@@ -55,9 +53,6 @@ function getStoredCategories(): Category[] {
   }
 }
 
-/**
- * Safely persist categories to browser localStorage
- */
 function setStoredCategories(categories: Category[]): void {
   if (typeof window === 'undefined') return;
   try {
@@ -67,25 +62,61 @@ function setStoredCategories(categories: Category[]): void {
   }
 }
 
-/**
- * Categories Data Access Service
- *
- * NOTE: When the NestJS API is introduced, these functions will simply make
- * HTTP requests, leaving UI components completely unaffected.
- */
+function mapApiCategory(raw: any): Category {
+  return {
+    id: raw.id,
+    name: raw.name,
+    type: raw.type as CategoryType,
+    icon: raw.icon,
+    color: raw.color,
+    isDefault: Boolean(raw.isDefault),
+    isArchived: Boolean(raw.isArchived),
+  };
+}
+
 export const categoriesService = {
   async getAll(): Promise<Category[]> {
+    if (tokenStorage.getAccessToken()) {
+      try {
+        const data = await apiClient.get<any[]>('/categories?includeArchived=true');
+        return data.map(mapApiCategory);
+      } catch (err) {
+        console.warn('Backend API request failed, falling back to local categories:', err);
+      }
+    }
     await new Promise((res) => setTimeout(res, 40));
     return getStoredCategories();
   },
 
   async getById(id: string): Promise<Category | null> {
+    if (tokenStorage.getAccessToken()) {
+      try {
+        const raw = await apiClient.get<any>(`/categories/${id}`);
+        return mapApiCategory(raw);
+      } catch (err) {
+        console.warn(`Failed to fetch category ${id} from API:`, err);
+      }
+    }
     await new Promise((res) => setTimeout(res, 30));
     const categories = getStoredCategories();
     return categories.find((c) => c.id === id) || null;
   },
 
   async create(dto: CreateCategoryDto): Promise<Category> {
+    if (tokenStorage.getAccessToken()) {
+      try {
+        const raw = await apiClient.post<any>('/categories', {
+          name: dto.name,
+          type: dto.type,
+          icon: dto.icon,
+          color: dto.color,
+        });
+        return mapApiCategory(raw);
+      } catch (err) {
+        console.warn('Failed to create category via API, storing locally:', err);
+      }
+    }
+
     await new Promise((res) => setTimeout(res, 80));
     const categories = getStoredCategories();
 
@@ -105,6 +136,20 @@ export const categoriesService = {
   },
 
   async update(id: string, dto: UpdateCategoryDto): Promise<Category> {
+    if (tokenStorage.getAccessToken()) {
+      try {
+        const raw = await apiClient.patch<any>(`/categories/${id}`, {
+          name: dto.name,
+          icon: dto.icon,
+          color: dto.color,
+          isArchived: dto.isArchived,
+        });
+        return mapApiCategory(raw);
+      } catch (err) {
+        console.warn(`Failed to update category ${id} via API:`, err);
+      }
+    }
+
     await new Promise((res) => setTimeout(res, 80));
     const categories = getStoredCategories();
     const index = categories.findIndex((c) => c.id === id);
@@ -138,6 +183,15 @@ export const categoriesService = {
   },
 
   async delete(id: string): Promise<void> {
+    if (tokenStorage.getAccessToken()) {
+      try {
+        await apiClient.delete(`/categories/${id}`);
+        return;
+      } catch (err) {
+        console.warn(`Failed to delete category ${id} via API:`, err);
+      }
+    }
+
     await new Promise((res) => setTimeout(res, 80));
     const categories = getStoredCategories();
     const target = categories.find((c) => c.id === id);
@@ -160,7 +214,7 @@ export const categoriesService = {
     const linkedBudgetCount = this.getLinkedBudgetsCount(id);
     if (linkedBudgetCount > 0) {
       throw new Error(
-        `Cannot delete category "${target.name}" because it is linked to ${linkedBudgetCount} active budget cap(s). Please remove the budgets or archive this category instead.`
+        `Cannot delete category "${target.name}" because it is linked to ${linkedBudgetCount} active budget limit(s). Please remove or reassign those budgets first.`
       );
     }
 
