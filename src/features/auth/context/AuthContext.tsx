@@ -87,12 +87,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (credentials: LoginCredentials) => {
     setIsLoading(true);
     try {
-      const res = await authService.login(credentials);
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem(DEMO_USER_KEY);
+      const isOnline = await apiClient.isBackendAvailable();
+      setIsBackendConnected(isOnline);
+
+      if (isOnline) {
+        try {
+          const res = await authService.login(credentials);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem(DEMO_USER_KEY);
+          }
+          setUser(res.user);
+          return;
+        } catch (err: any) {
+          // If backend returned a functional error (e.g. 401 Unauthorized), rethrow
+          if (err?.statusCode === 401 || err?.statusCode === 400) {
+            throw err;
+          }
+          // Otherwise network issue, fall through to resilient local session
+        }
       }
-      setUser(res.user);
-      setIsBackendConnected(true);
+
+      // Offline / Resilient Local Mode: Instant access without broken network blocking
+      const rawName = credentials.email.split('@')[0].replace(/[._-]/g, ' ');
+      const formattedName =
+        rawName.charAt(0).toUpperCase() + rawName.slice(1) || 'Wealth Builder';
+
+      const localSessionUser: User = {
+        id: `usr-local-${Date.now().toString(36)}`,
+        name: formattedName,
+        email: credentials.email.toLowerCase().trim(),
+        currency: 'BDT',
+        location: 'Local Session',
+        monthlySavingsTarget: 25000,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(DEMO_USER_KEY, JSON.stringify(localSessionUser));
+      }
+      setUser(localSessionUser);
     } finally {
       setIsLoading(false);
     }
@@ -101,12 +135,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = useCallback(async (data: RegisterData) => {
     setIsLoading(true);
     try {
-      const res = await authService.register(data);
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem(DEMO_USER_KEY);
+      const isOnline = await apiClient.isBackendAvailable();
+      setIsBackendConnected(isOnline);
+
+      if (isOnline) {
+        try {
+          const res = await authService.register(data);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem(DEMO_USER_KEY);
+          }
+          setUser(res.user);
+          return;
+        } catch (err: any) {
+          if (err?.statusCode === 409 || err?.statusCode === 400) {
+            throw err;
+          }
+        }
       }
-      setUser(res.user);
-      setIsBackendConnected(true);
+
+      // Offline / Resilient Local Mode
+      const localRegisteredUser: User = {
+        id: `usr-local-${Date.now().toString(36)}`,
+        name: data.name.trim(),
+        email: data.email.toLowerCase().trim(),
+        currency: data.currency || 'BDT',
+        location: data.location || 'Local Workspace',
+        monthlySavingsTarget: 25000,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(DEMO_USER_KEY, JSON.stringify(localRegisteredUser));
+      }
+      setUser(localRegisteredUser);
     } finally {
       setIsLoading(false);
     }

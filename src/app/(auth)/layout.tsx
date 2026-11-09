@@ -31,6 +31,8 @@ function AuthRedirectGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+const CURRENT_YEAR = 2026;
+
 export default function AuthLayout({
   children,
 }: {
@@ -58,7 +60,7 @@ export default function AuthLayout({
           <div className="w-full sm:max-w-md">{children}</div>
 
           <p className="mt-8 text-center text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Money Manager PLC. All financial ledgers encrypted.
+            &copy; {CURRENT_YEAR} Money Manager PLC. All financial ledgers encrypted.
           </p>
         </div>
       </AuthRedirectGuard>

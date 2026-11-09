@@ -3,6 +3,7 @@ import {
   ConflictException,
   UnauthorizedException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -12,6 +13,30 @@ import { PrismaService } from '../../database/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { CategoryType } from '@prisma/client';
+
+const DISPOSABLE_DOMAINS = new Set([
+  'mailinator.com',
+  'tempmail.com',
+  'temp-mail.org',
+  '10minutemail.com',
+  'guerrillamail.com',
+  'guerrillamail.net',
+  'throwawaymail.com',
+  'yopmail.com',
+  'yopmail.fr',
+  'sharklasers.com',
+  'trashmail.com',
+  'trashmail.net',
+  'dispostable.com',
+  'fakeinbox.com',
+  'generator.email',
+  'burnermail.io',
+  'mohmal.com',
+  'crazymailing.com',
+  'mytemp.email',
+  'inboxkitten.com',
+  'dropmail.me',
+]);
 
 const DEFAULT_CATEGORIES = [
   // Income
@@ -87,8 +112,16 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto) {
+    const normalizedEmail = dto.email.toLowerCase().trim();
+    const domain = normalizedEmail.split('@')[1];
+    if (domain && DISPOSABLE_DOMAINS.has(domain)) {
+      throw new BadRequestException(
+        'Disposable or temporary email addresses are not allowed. Please use your permanent email.',
+      );
+    }
+
     const existing = await this.prisma.user.findUnique({
-      where: { email: dto.email.toLowerCase().trim() },
+      where: { email: normalizedEmail },
     });
 
     if (existing) {

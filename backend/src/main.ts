@@ -2,8 +2,14 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import cookieParser from 'cookie-parser';
+import * as cookieParserModule from 'cookie-parser';
 import { AppModule } from './app.module';
+
+// Resolve CommonJS function export vs ESM default export
+const cookieParser =
+  typeof cookieParserModule === 'function'
+    ? cookieParserModule
+    : (cookieParserModule as any).default || cookieParserModule;
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
