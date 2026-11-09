@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -50,6 +50,11 @@ export default function RegisterPage() {
   }>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const passwordEvaluation = evaluatePasswordStrength(password);
 
@@ -224,31 +229,42 @@ export default function RegisterPage() {
               </span>
             </div>
 
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="new-password"
-                placeholder="Must meet all 5 security rules"
-                value={password}
-                onChange={handlePasswordChange}
-                disabled={isSubmitting}
-                aria-invalid={!!fieldErrors.password}
-                className={cn(
-                  'h-10 pr-10 transition-colors',
-                  fieldErrors.password &&
-                    'border-destructive focus-visible:ring-destructive/20 bg-destructive/5 text-destructive',
-                )}
-              />
-              <button
-                type="button"
-                tabIndex={-1}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-foreground transition-colors p-1 rounded-md"
-                onClick={() => setShowPassword((prev) => !prev)}
-              >
-                {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-              </button>
+            <div className="relative" suppressHydrationWarning>
+              {isMounted ? (
+                <>
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    placeholder="Must meet all 5 security rules"
+                    value={password}
+                    onChange={handlePasswordChange}
+                    disabled={isSubmitting}
+                    aria-invalid={!!fieldErrors.password}
+                    className={cn(
+                      'h-10 pr-10 transition-colors',
+                      fieldErrors.password &&
+                        'border-destructive focus-visible:ring-destructive/20 bg-destructive/5 text-destructive',
+                    )}
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-foreground transition-colors p-1 rounded-md"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                  >
+                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </>
+              ) : (
+                <div
+                  aria-hidden="true"
+                  className="h-10 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm text-muted-foreground/60 flex items-center"
+                >
+                  ••••••••••••
+                </div>
+              )}
             </div>
 
             {/* Password Strength Meter & Interactive Suggestions */}

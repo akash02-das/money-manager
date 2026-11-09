@@ -49,6 +49,11 @@ export function EmailVerificationBox({
   const [enteredCode, setEnteredCode] = useState('');
   const [codeError, setCodeError] = useState<string | null>(null);
   const [demoNotice, setDemoNotice] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Re-run validation whenever email text changes
   useEffect(() => {
@@ -126,52 +131,63 @@ export function EmailVerificationBox({
         )}
       </div>
 
-      <div className="relative">
-        <Input
-          id="email"
-          type="email"
-          autoComplete="email"
-          placeholder="akash@financialfreedom.com"
-          value={email}
-          onChange={(e) => {
-            onEmailChange(e.target.value);
-            if (onClearError) onClearError();
-          }}
-          disabled={disabled || isVerified}
-          className={cn(
-            'h-10 pr-24 transition-colors',
-            (error || validation.isDisposable) &&
-            'border-destructive focus-visible:ring-destructive/20 bg-destructive/5 text-destructive',
-            isVerified && 'border-emerald-500/50 bg-emerald-50/30 dark:bg-emerald-950/20',
-          )}
-        />
+      <div className="relative" suppressHydrationWarning>
+        {isMounted ? (
+          <>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              placeholder="akash@financialfreedom.com"
+              value={email}
+              onChange={(e) => {
+                onEmailChange(e.target.value);
+                if (onClearError) onClearError();
+              }}
+              disabled={disabled || isVerified}
+              className={cn(
+                'h-10 pr-24 transition-colors',
+                (error || validation.isDisposable) &&
+                'border-destructive focus-visible:ring-destructive/20 bg-destructive/5 text-destructive',
+                isVerified && 'border-emerald-500/50 bg-emerald-50/30 dark:bg-emerald-950/20',
+              )}
+            />
 
-        {/* Action Button inside Input */}
-        <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center">
-          {isVerified ? (
-            <button
-              type="button"
-              onClick={() => onVerificationChange(false)}
-              className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 px-2 py-1 rounded transition-colors"
-              title="Change email"
-            >
-              <RotateCcw className="size-3" />
-              <span>Change</span>
-            </button>
-          ) : (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={handleSendCode}
-              disabled={disabled || !validation.isRealCandidate || isVerifying}
-              className="h-7 text-xs text-primary hover:text-primary hover:bg-primary/10 px-2.5 font-medium cursor-pointer"
-            >
-              <Send className="size-3 mr-1" />
-              <span>Verify</span>
-            </Button>
-          )}
-        </div>
+            {/* Action Button inside Input */}
+            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center">
+              {isVerified ? (
+                <button
+                  type="button"
+                  onClick={() => onVerificationChange(false)}
+                  className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 px-2 py-1 rounded transition-colors"
+                  title="Change email"
+                >
+                  <RotateCcw className="size-3" />
+                  <span>Change</span>
+                </button>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleSendCode}
+                  disabled={disabled || !validation.isRealCandidate || isVerifying}
+                  className="h-7 text-xs text-primary hover:text-primary hover:bg-primary/10 px-2.5 font-medium cursor-pointer"
+                >
+                  <Send className="size-3 mr-1" />
+                  <span>Verify</span>
+                </Button>
+              )}
+            </div>
+          </>
+        ) : (
+          <div
+            aria-hidden="true"
+            className="h-10 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm text-muted-foreground/60 flex items-center"
+          >
+            akash@financialfreedom.com
+          </div>
+        )}
       </div>
 
       {/* Disposable Email Warning Alert */}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -43,6 +43,11 @@ export default function LoginPage() {
   }>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Real-time validation checks for disabling/enabling the submit button
   const emailValidation = validateEmailAddress(email);
@@ -181,23 +186,32 @@ export default function LoginPage() {
             <Label htmlFor="email" className="text-xs font-semibold text-foreground">
               Email Address
             </Label>
-            <div className="relative">
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="akash@financialfreedom.com"
-                value={email}
-                onChange={handleEmailChange}
-                disabled={isSubmitting}
-                aria-invalid={!!fieldErrors.email}
-                aria-describedby={fieldErrors.email ? "email-error" : undefined}
-                className={cn(
-                  'h-10 transition-colors',
-                  fieldErrors.email &&
-                    'border-destructive focus-visible:ring-destructive/20 bg-destructive/5 text-destructive placeholder:text-destructive/50',
-                )}
-              />
+            <div className="relative" suppressHydrationWarning>
+              {isMounted ? (
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="akash@financialfreedom.com"
+                  value={email}
+                  onChange={handleEmailChange}
+                  disabled={isSubmitting}
+                  aria-invalid={!!fieldErrors.email}
+                  aria-describedby={fieldErrors.email ? "email-error" : undefined}
+                  className={cn(
+                    'h-10 transition-colors',
+                    fieldErrors.email &&
+                      'border-destructive focus-visible:ring-destructive/20 bg-destructive/5 text-destructive placeholder:text-destructive/50',
+                  )}
+                />
+              ) : (
+                <div
+                  aria-hidden="true"
+                  className="h-10 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm text-muted-foreground/60 flex items-center"
+                >
+                  akash@financialfreedom.com
+                </div>
+              )}
             </div>
 
             {/* Email Typo Suggestion */}
@@ -255,36 +269,47 @@ export default function LoginPage() {
                 <span>Protected</span>
               </span>
             </div>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
-                placeholder="••••••••••••"
-                value={password}
-                onChange={handlePasswordChange}
-                disabled={isSubmitting}
-                aria-invalid={!!fieldErrors.password}
-                aria-describedby={fieldErrors.password ? "password-error" : undefined}
-                className={cn(
-                  'h-10 pr-10 transition-colors',
-                  fieldErrors.password &&
-                    'border-destructive focus-visible:ring-destructive/20 bg-destructive/5 text-destructive placeholder:text-destructive/50',
-                )}
-              />
-              <button
-                type="button"
-                tabIndex={-1}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-foreground transition-colors p-1 rounded-md cursor-pointer"
-                onClick={() => setShowPassword((prev) => !prev)}
-              >
-                {showPassword ? (
-                  <EyeOff className="size-4" />
-                ) : (
-                  <Eye className="size-4" />
-                )}
-              </button>
+            <div className="relative" suppressHydrationWarning>
+              {isMounted ? (
+                <>
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    placeholder="••••••••••••"
+                    value={password}
+                    onChange={handlePasswordChange}
+                    disabled={isSubmitting}
+                    aria-invalid={!!fieldErrors.password}
+                    aria-describedby={fieldErrors.password ? "password-error" : undefined}
+                    className={cn(
+                      'h-10 pr-10 transition-colors',
+                      fieldErrors.password &&
+                        'border-destructive focus-visible:ring-destructive/20 bg-destructive/5 text-destructive placeholder:text-destructive/50',
+                    )}
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-foreground transition-colors p-1 rounded-md cursor-pointer"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="size-4" />
+                    ) : (
+                      <Eye className="size-4" />
+                    )}
+                  </button>
+                </>
+              ) : (
+                <div
+                  aria-hidden="true"
+                  className="h-10 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm text-muted-foreground/60 flex items-center"
+                >
+                  ••••••••••••
+                </div>
+              )}
             </div>
 
             {/* Interactive Strong Password Engine & Demo */}
