@@ -134,12 +134,6 @@ export default function LoginPage() {
         err?.message?.includes('not been verified') ||
         err?.message?.includes('verification code')
       ) {
-        if (typeof window !== 'undefined' && err?.verificationPreview) {
-          sessionStorage.setItem(
-            'mm_last_verification_preview',
-            JSON.stringify({ email: email.trim(), code: err.verificationPreview.code }),
-          );
-        }
         router.push(`/verify-email?email=${encodeURIComponent(email.trim())}`);
         return;
       }

@@ -23,7 +23,7 @@ import {
   Loader2,
   ArrowRight,
   ShieldCheck,
-  Sparkles,
+  Info,
 } from 'lucide-react';
 
 function VerifyEmailContent() {
@@ -38,25 +38,24 @@ function VerifyEmailContent() {
   const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(60);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [resendNotice, setResendNotice] = useState<string | null>(null);
-  const [devPreviewCode, setDevPreviewCode] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
-  // Check if a dev code preview was saved during registration/login in this session
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = sessionStorage.getItem('mm_last_verification_preview');
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (parsed?.email === email || !email) {
-            setDevPreviewCode(parsed.code);
-          }
-        } catch {}
-      }
-    }
-  }, [email]);
+    setIsMounted(true);
+  }, []);
+
+  // Countdown timer for resend cooldown
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const interval = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [resendCooldown]);
 
   // If a direct verification token link was clicked, automatically verify it on mount
   useEffect(() => {
@@ -76,7 +75,7 @@ function VerifyEmailContent() {
       }, 1200);
     } catch (err: any) {
       setErrorMessage(
-        err?.message || 'Verification token is invalid or has expired. Please request a new code.',
+        err?.message || 'Verification link is invalid or has expired. Please request a new code.',
       );
     } finally {
       setIsSubmitting(false);
@@ -100,16 +99,13 @@ function VerifyEmailContent() {
         code: code.trim(),
       });
       setIsSuccess(true);
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('mm_last_verification_preview');
-      }
       setTimeout(() => {
         router.push('/');
       }, 1000);
     } catch (err: any) {
       setErrorMessage(
         err?.message ||
-          'Verification failed. The code may be incorrect or expired. Please check and try again.',
+          'Verification failed. The code may be incorrect or expired. Please check your inbox and try again.',
       );
     } finally {
       setIsSubmitting(false);
@@ -118,37 +114,24 @@ function VerifyEmailContent() {
 
   const handleResend = async () => {
     if (!email) {
-      setErrorMessage('Email address is missing. Please return to the login page.');
+      setErrorMessage('Email address is missing. Please return to the sign in page.');
       return;
     }
+
+    if (resendCooldown > 0) return;
 
     setIsResending(true);
     setErrorMessage(null);
     setResendNotice(null);
 
     try {
-      const res = await resendVerification({ email: email.trim() });
-      setResendNotice('A fresh 6-digit code has been sent to your email.');
-      if (res?.verificationPreview?.code) {
-        setDevPreviewCode(res.verificationPreview.code);
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem(
-            'mm_last_verification_preview',
-            JSON.stringify({ email: email.trim(), code: res.verificationPreview.code }),
-          );
-        }
-      }
+      await resendVerification({ email: email.trim() });
+      setResendNotice('A fresh 6-digit code has been dispatched to your email.');
+      setResendCooldown(60);
     } catch (err: any) {
       setErrorMessage(err?.message || 'Could not resend code. Please try again in a few moments.');
     } finally {
       setIsResending(false);
-    }
-  };
-
-  const handleAutoFillDevCode = () => {
-    if (devPreviewCode) {
-      setCode(devPreviewCode);
-      setErrorMessage(null);
     }
   };
 
@@ -166,12 +149,12 @@ function VerifyEmailContent() {
         <CardDescription className="text-xs sm:text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
           {email ? (
             <>
-              We sent a 6-digit security code to{' '}
+              A 6-digit verification code has been dispatched to{' '}
               <strong className="font-semibold text-foreground">{email}</strong>. Enter it below to
-              unlock your verified account.
+              activate your verified vault.
             </>
           ) : (
-            'Enter the 6-digit verification code sent to your registered email.'
+            'Enter the 6-digit verification code sent to your registered email address.'
           )}
         </CardDescription>
       </CardHeader>
@@ -207,75 +190,70 @@ function VerifyEmailContent() {
           </div>
         )}
 
-        {/* Local / In-App Email Simulator Card */}
-        {devPreviewCode && !isSuccess && (
-          <div className="rounded-xl border border-primary/30 bg-gradient-to-r from-primary/5 to-emerald-500/5 p-3.5 space-y-2 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-foreground flex items-center gap-1.5">
-                <Sparkles className="size-3.5 text-primary" />
-                <span>Simulated Mail Delivery</span>
-              </span>
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-mono">
-                Development Preview
-              </span>
-            </div>
-            <p className="text-muted-foreground text-[11px] leading-relaxed">
-              In this environment, your 6-digit Money Manager verification code is:{' '}
-              <strong className="font-mono text-sm tracking-widest text-primary font-bold">
-                {devPreviewCode}
-              </strong>
-            </p>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={handleAutoFillDevCode}
-              className="w-full text-xs font-semibold border-primary/30 text-primary hover:bg-primary/10 cursor-pointer h-7"
-            >
-              ⚡ Auto-Fill This Code
-            </Button>
-          </div>
-        )}
-
         {/* Verification Form */}
-        <form onSubmit={handleVerifySubmit} noValidate className="space-y-4">
+        <form onSubmit={handleVerifySubmit} noValidate className="space-y-4" suppressHydrationWarning>
           {!emailParam && (
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-xs font-semibold">
                 Email Address
               </Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="akash@example.com"
-                required
-                disabled={isSubmitting || isSuccess}
-                className="h-10"
-              />
+              <div className="relative" suppressHydrationWarning>
+                {isMounted ? (
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="akash@example.com"
+                    required
+                    disabled={isSubmitting || isSuccess}
+                    className="h-10"
+                  />
+                ) : (
+                  <div
+                    aria-hidden="true"
+                    className="h-10 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm text-muted-foreground/60 flex items-center"
+                  >
+                    akash@example.com
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
           <div className="space-y-1.5 text-center">
             <Label htmlFor="code" className="text-xs font-semibold block text-center">
-              6-Digit Verification Code
+              6-Digit Security Code
             </Label>
-            <Input
-              id="code"
-              type="text"
-              maxLength={6}
-              autoFocus
-              placeholder="••••••"
-              value={code}
-              onChange={(e) => {
-                const numeric = e.target.value.replace(/\D/g, '').slice(0, 6);
-                setCode(numeric);
-                if (errorMessage) setErrorMessage(null);
-              }}
-              disabled={isSubmitting || isSuccess}
-              className="h-12 text-center font-mono text-xl tracking-[0.4em] font-bold"
-            />
+            <div className="relative" suppressHydrationWarning>
+              {isMounted ? (
+                <Input
+                  id="code"
+                  type="text"
+                  maxLength={6}
+                  autoFocus
+                  placeholder="••••••"
+                  value={code}
+                  onChange={(e) => {
+                    const numeric = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    setCode(numeric);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
+                  disabled={isSubmitting || isSuccess}
+                  className="h-12 text-center font-mono text-xl tracking-[0.4em] font-bold"
+                />
+              ) : (
+                <div
+                  aria-hidden="true"
+                  className="h-12 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-center font-mono text-xl tracking-[0.4em] text-muted-foreground/60 flex items-center justify-center font-bold"
+                >
+                  ••••••
+                </div>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Please enter the code from the verification email sent to your inbox.
+            </p>
           </div>
 
           <Button
@@ -298,21 +276,34 @@ function VerifyEmailContent() {
           </Button>
         </form>
 
+        {/* Local Dev & Delivery Note */}
+        <div className="rounded-xl border border-border/60 bg-muted/30 p-3 text-[11px] text-muted-foreground space-y-1">
+          <p className="flex items-center gap-1.5 font-medium text-foreground">
+            <Info className="size-3.5 text-primary shrink-0" />
+            <span>Didn't see the email?</span>
+          </p>
+          <p className="leading-relaxed">
+            Check your spam/junk folder. In local development without SMTP configured, the 6-digit code is logged securely to your backend terminal console.
+          </p>
+        </div>
+
         {/* Resend Option */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
-          <span>Didn't receive the email?</span>
+        <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+          <span>Need a fresh code?</span>
           <button
             type="button"
             onClick={handleResend}
-            disabled={isResending || isSubmitting || isSuccess}
-            className="font-semibold text-primary hover:underline inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
+            disabled={isResending || isSubmitting || isSuccess || resendCooldown > 0}
+            className="font-semibold text-primary hover:underline inline-flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:no-underline"
           >
             {isResending ? (
               <Loader2 className="size-3 animate-spin" />
             ) : (
               <RotateCcw className="size-3" />
             )}
-            <span>Resend Code</span>
+            <span>
+              {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend Code'}
+            </span>
           </button>
         </div>
       </CardContent>
@@ -352,4 +343,3 @@ export default function VerifyEmailPage() {
     </Suspense>
   );
 }
-

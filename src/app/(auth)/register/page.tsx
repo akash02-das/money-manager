@@ -24,11 +24,11 @@ import {
   ShieldCheck,
   Sparkles,
   Lock,
+  Mail,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CurrencyCode } from '@/types/finance';
 import { PasswordStrengthMeter } from '@/features/auth/components/PasswordStrengthMeter';
-import { EmailVerificationBox } from '@/features/auth/components/EmailVerificationBox';
 import { evaluatePasswordStrength } from '@/features/auth/utils/password-strength';
 import { validateEmailAddress } from '@/features/auth/utils/email-validator';
 
@@ -38,7 +38,6 @@ export default function RegisterPage() {
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [currency, setCurrency] = useState<CurrencyCode>('BDT');
@@ -64,6 +63,7 @@ export default function RegisterPage() {
   }, []);
 
   const passwordEvaluation = evaluatePasswordStrength(password);
+  const emailValidation = validateEmailAddress(email);
 
   const validateForm = (): boolean => {
     const errors: { name?: string; email?: string; password?: string } = {};
@@ -78,8 +78,6 @@ export default function RegisterPage() {
     } else if (emailRes.isDisposable) {
       errors.email =
         'Temporary/disposable emails are blocked to safeguard your transaction ledger.';
-    } else if (!isEmailVerified) {
-      errors.email = 'Please click "Verify" next to your email to confirm it is real.';
     }
 
     if (!password) {
@@ -96,6 +94,12 @@ export default function RegisterPage() {
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value);
     if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: undefined }));
+    if (serverError) setServerError(null);
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+    if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }));
     if (serverError) setServerError(null);
   };
 
@@ -123,19 +127,12 @@ export default function RegisterPage() {
     setIsSubmitting(true);
 
     try {
-      const res = await register({
+      await register({
         name: name.trim(),
         email: email.trim(),
         password,
         currency,
       });
-
-      if (typeof window !== 'undefined' && res?.verificationPreview) {
-        sessionStorage.setItem(
-          'mm_last_verification_preview',
-          JSON.stringify({ email: email.trim(), code: res.verificationPreview.code }),
-        );
-      }
 
       router.push(`/verify-email?email=${encodeURIComponent(email.trim())}`);
     } catch (err: any) {
@@ -183,25 +180,36 @@ export default function RegisterPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4" suppressHydrationWarning>
           {/* Full Name */}
           <div className="space-y-1.5">
             <Label htmlFor="name" className="text-xs font-semibold text-foreground">
               Full Legal or Preferred Name
             </Label>
-            <Input
-              id="name"
-              placeholder="e.g. Akash Das"
-              value={name}
-              onChange={handleNameChange}
-              disabled={isSubmitting}
-              aria-invalid={!!fieldErrors.name}
-              className={cn(
-                'h-10 transition-colors',
-                fieldErrors.name &&
-                  'border-destructive focus-visible:ring-destructive/20 bg-destructive/5 text-destructive',
+            <div className="relative" suppressHydrationWarning>
+              {isMounted ? (
+                <Input
+                  id="name"
+                  placeholder="e.g. Akash Das"
+                  value={name}
+                  onChange={handleNameChange}
+                  disabled={isSubmitting}
+                  aria-invalid={!!fieldErrors.name}
+                  className={cn(
+                    'h-10 transition-colors',
+                    fieldErrors.name &&
+                      'border-destructive focus-visible:ring-destructive/20 bg-destructive/5 text-destructive',
+                  )}
+                />
+              ) : (
+                <div
+                  aria-hidden="true"
+                  className="h-10 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm text-muted-foreground/60 flex items-center"
+                >
+                  e.g. Akash Das
+                </div>
               )}
-            />
+            </div>
             {fieldErrors.name && (
               <p className="flex items-center gap-1.5 text-[11px] font-medium text-destructive animate-in fade-in-50 duration-200">
                 <AlertCircle className="size-3 shrink-0" />
@@ -210,19 +218,67 @@ export default function RegisterPage() {
             )}
           </div>
 
-          {/* Real Email Verification Box */}
-          <EmailVerificationBox
-            email={email}
-            onEmailChange={setEmail}
-            isVerified={isEmailVerified}
-            onVerificationChange={setIsEmailVerified}
-            disabled={isSubmitting}
-            error={fieldErrors.email}
-            onClearError={() => {
-              if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }));
-              if (serverError) setServerError(null);
-            }}
-          />
+          {/* Email Address with real-time domain check and typo hints */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="email" className="text-xs font-semibold text-foreground">
+                Work or Personal Email
+              </Label>
+              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <Mail className="size-3" />
+                <span>Verification code sent here</span>
+              </span>
+            </div>
+            <div className="relative" suppressHydrationWarning>
+              {isMounted ? (
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="e.g. akash@financialfreedom.com"
+                  value={email}
+                  onChange={handleEmailChange}
+                  disabled={isSubmitting}
+                  aria-invalid={!!fieldErrors.email}
+                  className={cn(
+                    'h-10 transition-colors',
+                    fieldErrors.email &&
+                      'border-destructive focus-visible:ring-destructive/20 bg-destructive/5 text-destructive',
+                  )}
+                />
+              ) : (
+                <div
+                  aria-hidden="true"
+                  className="h-10 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm text-muted-foreground/60 flex items-center"
+                >
+                  e.g. akash@financialfreedom.com
+                </div>
+              )}
+            </div>
+
+            {/* Typo suggestions if applicable */}
+            {isMounted && emailValidation.suggestedEmail && !fieldErrors.email && (
+              <div className="flex items-center justify-between rounded-lg bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 text-[11px] text-amber-600 dark:text-amber-400">
+                <span>
+                  Did you mean <strong>{emailValidation.suggestedEmail}</strong>?
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setEmail(emailValidation.suggestedEmail!)}
+                  className="font-semibold underline hover:text-amber-700 ml-2 cursor-pointer"
+                >
+                  Use suggestion
+                </button>
+              </div>
+            )}
+
+            {fieldErrors.email && (
+              <p className="flex items-center gap-1.5 text-[11px] font-medium text-destructive animate-in fade-in-50 duration-200">
+                <AlertCircle className="size-3 shrink-0" />
+                <span>{fieldErrors.email}</span>
+              </p>
+            )}
+          </div>
 
           {/* Password with Strength Engine & Suggestions */}
           <div className="space-y-1.5">
@@ -295,6 +351,7 @@ export default function RegisterPage() {
             </Label>
             <select
               id="currency"
+              suppressHydrationWarning
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-colors cursor-pointer"
               value={currency}
               onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
@@ -320,7 +377,7 @@ export default function RegisterPage() {
             {isSubmitting ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                <span>Forging your financial vault...</span>
+                <span>Forging vault & sending verification code...</span>
               </>
             ) : (
               <>

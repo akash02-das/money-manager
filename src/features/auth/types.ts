@@ -30,11 +30,6 @@ export interface RegisterResponse {
   email: string;
   isEmailVerified: boolean;
   user: Partial<User>;
-  verificationPreview?: {
-    code: string;
-    token: string;
-    expiresAt: string;
-  };
 }
 
 export interface LoginCredentials {

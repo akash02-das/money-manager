@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
+import { MailService } from './mail.service';
 import { PrismaService } from '../../database/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -16,6 +17,7 @@ describe('AuthService (Email Verification & Access Control)', () => {
   let prisma: any;
   let jwtService: any;
   let configService: any;
+  let mailService: any;
 
   beforeEach(async () => {
     prisma = {
@@ -57,12 +59,17 @@ describe('AuthService (Email Verification & Access Control)', () => {
       get: jest.fn((key: string, defaultVal: any) => defaultVal || 'mock-secret'),
     };
 
+    mailService = {
+      sendVerificationEmail: jest.fn().mockResolvedValue(true),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: PrismaService, useValue: prisma },
         { provide: JwtService, useValue: jwtService },
         { provide: ConfigService, useValue: configService },
+        { provide: MailService, useValue: mailService },
       ],
     }).compile();
 
@@ -102,8 +109,12 @@ describe('AuthService (Email Verification & Access Control)', () => {
 
       expect(result.success).toBe(true);
       expect(result.isEmailVerified).toBe(false);
-      expect(result.verificationPreview).toBeDefined();
-      expect(result.verificationPreview.code).toHaveLength(6);
+      expect((result as any).verificationPreview).toBeUndefined();
+      expect(mailService.sendVerificationEmail).toHaveBeenCalledWith(
+        'akash@example.com',
+        expect.any(String),
+        expect.any(String),
+      );
       expect(prisma.user.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
@@ -269,7 +280,12 @@ describe('AuthService (Email Verification & Access Control)', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.verificationPreview).toBeDefined();
+      expect((result as any).verificationPreview).toBeUndefined();
+      expect(mailService.sendVerificationEmail).toHaveBeenCalledWith(
+        'akash@example.com',
+        expect.any(String),
+        expect.any(String),
+      );
     });
 
     it('should reject resend if email is already verified', async () => {

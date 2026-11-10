@@ -12,6 +12,7 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
+import { MailService } from './mail.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
@@ -111,6 +112,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly mailService: MailService,
   ) {}
 
   private hashToken(token: string): string {
@@ -119,7 +121,7 @@ export class AuthService {
 
   /**
    * Generates a 6-digit OTP code and secure UUID token for email verification.
-   * Expires in 15 minutes.
+   * Dispatches the verification email and expires in 15 minutes.
    */
   private async generateVerificationCodeAndToken(userId: string, email: string) {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -141,9 +143,8 @@ export class AuthService {
       },
     });
 
-    this.logger.log(
-      `📬 [EMAIL VERIFICATION DISPATCH] To: ${email} | Code: ${code} | Link: http://localhost:3000/verify-email?token=${token}`,
-    );
+    // Send real verification email via MailService (or log to terminal in dev mode)
+    await this.mailService.sendVerificationEmail(email, code, token);
 
     return verification;
   }
@@ -191,21 +192,16 @@ export class AuthService {
       return createdUser;
     });
 
-    const verification = await this.generateVerificationCodeAndToken(user.id, user.email);
+    await this.generateVerificationCodeAndToken(user.id, user.email);
 
     const { passwordHash: _, ...userSafe } = user;
     return {
       success: true,
       message:
-        'Account created! A verification code has been dispatched to your email address. Please verify to access your dashboard.',
+        'Account created! A 6-digit verification code has been dispatched to your email address. Please verify to access your dashboard.',
       email: user.email,
       isEmailVerified: false,
       user: userSafe,
-      verificationPreview: {
-        code: verification.code,
-        token: verification.token,
-        expiresAt: verification.expiresAt,
-      },
     };
   }
 
@@ -250,20 +246,15 @@ export class AuthService {
 
     // Strict access control: Unverified accounts MUST NOT access the dashboard
     if (!user.isEmailVerified) {
-      const verification = await this.generateVerificationCodeAndToken(user.id, user.email);
+      await this.generateVerificationCodeAndToken(user.id, user.email);
 
       throw new ForbiddenException({
         statusCode: 403,
         error: 'EMAIL_NOT_VERIFIED',
         message:
-          'Your email address has not been verified. Please enter the verification code sent to your inbox to unlock your dashboard.',
+          'Your email address has not been verified. Please enter the 6-digit verification code sent to your inbox to unlock your dashboard.',
         email: user.email,
         isEmailVerified: false,
-        verificationPreview: {
-          code: verification.code,
-          token: verification.token,
-          expiresAt: verification.expiresAt,
-        },
       });
     }
 
@@ -367,17 +358,12 @@ export class AuthService {
       throw new BadRequestException('This email is already verified. You can log in directly.');
     }
 
-    const verification = await this.generateVerificationCodeAndToken(user.id, user.email);
+    await this.generateVerificationCodeAndToken(user.id, user.email);
 
     return {
       success: true,
-      message: 'A fresh verification code has been dispatched to your email address.',
+      message: 'A fresh 6-digit verification code has been dispatched to your email address.',
       email: user.email,
-      verificationPreview: {
-        code: verification.code,
-        token: verification.token,
-        expiresAt: verification.expiresAt,
-      },
     };
   }
 

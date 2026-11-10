@@ -18,7 +18,6 @@ import { LogIn, UserPlus, Sparkles, AlertCircle, Eye, EyeOff, Loader2, Lock, Shi
 import { cn } from '@/lib/utils';
 import type { CurrencyCode } from '@/types/finance';
 import { PasswordStrengthMeter } from './PasswordStrengthMeter';
-import { EmailVerificationBox } from './EmailVerificationBox';
 import { evaluatePasswordStrength } from '../utils/password-strength';
 import { validateEmailAddress } from '../utils/email-validator';
 
@@ -48,11 +47,12 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
   // Register form state
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
-  const [isRegEmailVerified, setIsRegEmailVerified] = useState(false);
   const [regPassword, setRegPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [regCurrency, setRegCurrency] = useState<CurrencyCode>('BDT');
   const [regErrors, setRegErrors] = useState<{ name?: string; email?: string; password?: string }>({});
+
+  const regEmailValidation = validateEmailAddress(regEmail);
 
   const validateLoginForm = (): boolean => {
     const errors: { email?: string; password?: string } = {};
@@ -113,12 +113,6 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
     } catch (err: any) {
       if (err?.error === 'EMAIL_NOT_VERIFIED' || err?.message?.includes('not been verified')) {
         onOpenChange(false);
-        if (typeof window !== 'undefined' && err?.verificationPreview) {
-          sessionStorage.setItem(
-            'mm_last_verification_preview',
-            JSON.stringify({ email: loginEmail.trim(), code: err.verificationPreview.code }),
-          );
-        }
         router.push(`/verify-email?email=${encodeURIComponent(loginEmail.trim())}`);
         return;
       }
@@ -145,19 +139,13 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
     }
 
     try {
-      const res = await register({
+      await register({
         name: regName.trim(),
         email: regEmail.trim(),
         password: regPassword,
         currency: regCurrency,
       });
       onOpenChange(false);
-      if (typeof window !== 'undefined' && res?.verificationPreview) {
-        sessionStorage.setItem(
-          'mm_last_verification_preview',
-          JSON.stringify({ email: regEmail.trim(), code: res.verificationPreview.code }),
-        );
-      }
       router.push(`/verify-email?email=${encodeURIComponent(regEmail.trim())}`);
     } catch (err: any) {
       setError(err?.message || 'Failed to create account. Please try again.');
@@ -369,19 +357,46 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
                 )}
               </div>
 
-              {/* Real Email Verification Box */}
-              <EmailVerificationBox
-                email={regEmail}
-                onEmailChange={setRegEmail}
-                isVerified={isRegEmailVerified}
-                onVerificationChange={setIsRegEmailVerified}
-                disabled={isLoading}
-                error={regErrors.email}
-                onClearError={() => {
-                  if (regErrors.email) setRegErrors((prev) => ({ ...prev, email: undefined }));
-                  if (error) setError(null);
-                }}
-              />
+              {/* Email Address */}
+              <div className="space-y-1.5">
+                <Label htmlFor="reg-email" className="text-xs font-semibold">Email Address</Label>
+                <Input
+                  id="reg-email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="akash@financialfreedom.com"
+                  value={regEmail}
+                  onChange={(e) => {
+                    setRegEmail(e.target.value);
+                    if (regErrors.email) setRegErrors((prev) => ({ ...prev, email: undefined }));
+                    if (error) setError(null);
+                  }}
+                  aria-invalid={!!regErrors.email}
+                  className={cn(
+                    'h-10 transition-colors',
+                    regErrors.email && 'border-destructive focus-visible:ring-destructive/20 bg-destructive/5 text-destructive'
+                  )}
+                  disabled={isLoading}
+                />
+                {regEmailValidation.suggestedEmail && !regErrors.email && (
+                  <div className="flex items-center justify-between rounded-lg bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 text-[11px] text-amber-600 dark:text-amber-400">
+                    <span>Did you mean <strong>{regEmailValidation.suggestedEmail}</strong>?</span>
+                    <button
+                      type="button"
+                      onClick={() => setRegEmail(regEmailValidation.suggestedEmail!)}
+                      className="font-semibold underline hover:text-amber-700 ml-2 cursor-pointer"
+                    >
+                      Use
+                    </button>
+                  </div>
+                )}
+                {regErrors.email && (
+                  <p className="flex items-center gap-1.5 text-[11px] font-medium text-destructive">
+                    <AlertCircle className="size-3 shrink-0" />
+                    <span>{regErrors.email}</span>
+                  </p>
+                )}
+              </div>
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
