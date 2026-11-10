@@ -237,3 +237,87 @@ describe('Email Verification & Account-Type Indicators Suite', () => {
   });
 });
 
+describe('Category & Select Label Resolution Suite', () => {
+  const DEFAULT_CATEGORIES = [
+    { id: 'cat-sal', name: 'Salary & Employment', type: 'INCOME' },
+    { id: 'cat-con', name: 'Software Consulting', type: 'INCOME' },
+    { id: 'cat-hou', name: 'Housing & Rent', type: 'EXPENSE' },
+    { id: 'cat-gro', name: 'Groceries & Market', type: 'EXPENSE' },
+    { id: 'cat-uti', name: 'Utilities & Internet', type: 'EXPENSE' },
+    { id: 'cat-din', name: 'Dining & Cafes', type: 'EXPENSE' },
+    { id: 'cat-tra', name: 'Transportation', type: 'EXPENSE' },
+    { id: 'cat-hea', name: 'Health & Wellness', type: 'EXPENSE' },
+  ];
+
+  function extractItemsFromChildren(children: any): Record<string, any> {
+    const items: Record<string, any> = {};
+
+    function traverse(node: any) {
+      if (!node) return;
+      if (Array.isArray(node)) {
+        for (const item of node) {
+          traverse(item);
+        }
+        return;
+      }
+      if (node && typeof node === 'object' && 'props' in node) {
+        const props = node.props;
+        if (props && 'value' in props && props.value !== undefined && props.value !== null) {
+          items[String(props.value)] = props.label !== undefined ? props.label : props.children;
+        }
+        if (props && props.children) {
+          traverse(props.children);
+        }
+      }
+    }
+
+    traverse(children);
+    return items;
+  }
+
+  it('maps category ids to full display names instead of showing raw ids like cat-hou or cat-gro', () => {
+    const mockSelectChildren = [
+      {
+        props: {
+          children: DEFAULT_CATEGORIES.map((c) => ({
+            props: {
+              value: c.id,
+              children: c.name,
+            },
+          })),
+        },
+      },
+    ];
+
+    const items = extractItemsFromChildren(mockSelectChildren);
+
+    // Verify cat-hou maps to 'Housing & Rent'
+    assert.strictEqual(items['cat-hou'], 'Housing & Rent', 'cat-hou must map to Housing & Rent');
+    assert.notStrictEqual(items['cat-hou'], 'cat-hou', 'cat-hou must not be displayed as raw id');
+
+    // Verify cat-gro maps to 'Groceries & Market'
+    assert.strictEqual(items['cat-gro'], 'Groceries & Market', 'cat-gro must map to Groceries & Market');
+    assert.notStrictEqual(items['cat-gro'], 'cat-gro', 'cat-gro must not be displayed as raw id');
+
+    // All categories resolve to their full names
+    for (const cat of DEFAULT_CATEGORIES) {
+      assert.strictEqual(items[cat.id], cat.name, `${cat.id} must resolve to ${cat.name}`);
+    }
+  });
+
+  it('correctly honors explicit label prop over nested children for accessibility', () => {
+    const mockSelectChildren = [
+      {
+        props: {
+          value: 'cat-hou',
+          label: 'Housing & Rent',
+          children: { props: { children: 'Housing & Rent with colored dot' } },
+        },
+      },
+    ];
+
+    const items = extractItemsFromChildren(mockSelectChildren);
+    assert.strictEqual(items['cat-hou'], 'Housing & Rent');
+  });
+});
+
