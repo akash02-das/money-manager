@@ -23,17 +23,17 @@ export default function DashboardLayout({
             <CategoriesProvider>
               <TransactionsProvider>
                 <BudgetsProvider>
-                  <div className="flex min-h-screen w-full bg-background">
+                  <div className="flex h-screen w-full overflow-hidden bg-background">
                     {/* Fixed Desktop Sidebar */}
                     <Sidebar />
 
                     {/* Main Content Area */}
-                    <div className="flex flex-1 flex-col overflow-hidden">
+                    <div className="flex flex-1 flex-col h-screen min-w-0 overflow-hidden">
                       {/* Top Sticky Header */}
                       <Header />
 
-                      {/* Scrollable Page Body */}
-                      <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
+                      {/* Scrollable Page Body (Only right part scrolls) */}
+                      <main className="flex-1 overflow-y-auto min-h-0 px-4 py-6 md:px-8 md:py-8">
                         <div className="mx-auto max-w-7xl">{children}</div>
                       </main>
                     </div>

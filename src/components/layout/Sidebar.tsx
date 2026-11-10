@@ -27,7 +27,7 @@ export function Sidebar() {
   }, []);
 
   return (
-    <aside className="hidden lg:flex w-64 flex-col border-r border-border bg-card/60 backdrop-blur-md">
+    <aside className="hidden lg:flex w-64 shrink-0 flex-col h-screen border-r border-border bg-card/60 backdrop-blur-md select-none">
       {/* Brand Header */}
       <div className="flex h-16 items-center gap-3 px-6 border-b border-border">
         <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">

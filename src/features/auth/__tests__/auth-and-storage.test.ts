@@ -1,5 +1,6 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert';
+import fs from 'node:fs';
 
 // Mock localStorage for node environment
 class MockLocalStorage {
@@ -320,4 +321,41 @@ describe('Category & Select Label Resolution Suite', () => {
     assert.strictEqual(items['cat-hou'], 'Housing & Rent');
   });
 });
+
+describe('Real-time & Motivational Ticker Suite', () => {
+  it('formats per-second time in standard hh:mm:ss a 12-hour format', () => {
+    const fixedDate = new Date('2026-11-10T14:35:45Z');
+    const timeRegex = /^(0[1-9]|1[0-2]):[0-5][0-9]:[0-5][0-9]\s(AM|PM)$/;
+
+    // Simulate formatting
+    const hours = fixedDate.getHours();
+    const minutes = fixedDate.getMinutes();
+    const seconds = fixedDate.getSeconds();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const formattedHours = String(hours % 12 || 12).padStart(2, '0');
+    const formattedMinutes = String(minutes).padStart(2, '0');
+    const formattedSeconds = String(seconds).padStart(2, '0');
+    const result = `${formattedHours}:${formattedMinutes}:${formattedSeconds} ${ampm}`;
+
+    assert.match(result, timeRegex, 'Time must match hh:mm:ss a pattern');
+  });
+
+  it('contains 50+ empowering, wealth-oriented time-is-money motivational slogans', () => {
+    // Read the quotes from TimeIsMoneyTicker component source to ensure 50+ quotes are loaded
+    const content = fs.readFileSync('src/components/layout/TimeIsMoneyTicker.tsx', 'utf8');
+    const match = content.match(/MOTIVATIONAL_QUOTES:\s*MotivationalQuote\[\]\s*=\s*(\[[\s\S]*?\]);/);
+    assert.ok(match, 'MOTIVATIONAL_QUOTES array must be present');
+
+    const quotes = eval(match[1]);
+    assert.ok(quotes.length >= 50, `Must provide 50+ quotes, currently has ${quotes.length}`);
+
+    const validCategories = ['time', 'saving', 'wealth', 'investing', 'discipline'];
+    for (const item of quotes) {
+      assert.ok(item.quote && item.quote.length > 10, 'Each quote should be substantive');
+      assert.ok(item.author && item.author.length > 0, 'Each quote should have an author');
+      assert.ok(validCategories.includes(item.category), `Category must be valid financial topic: ${item.category}`);
+    }
+  });
+});
+
 

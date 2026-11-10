@@ -53,6 +53,16 @@ Users can always identify their active mode:
 - **Live Spending Aggregation**: Dynamic tracking of spent amounts vs. allocated budget limits with visual percentage badges.
 - **Overspending Alerts**: Visual warnings when categories approach or exceed spending limits.
 
+### 8. ⏱️ Real-Time Clock & 60+ Motivational "Time is Money" Ticker
+- **Dedicated Sub-Bar Layout**: Clean, uncrowded secondary header row that keeps real-time metrics and quotes organized without cluttering main header actions.
+- **Per-Second Live Rendering**: Real-time 12-hour digital time (`hh:mm:ss a`) with live pulsing indicators and zero-jitter tabular monospace typography (`font-mono tabular-nums`).
+- **60+ Curated Wealth Mantras**: Comprehensive collection of 60+ quotes across time-as-currency, compounding, frugality, discipline, and financial independence.
+- **Interactive Controls**: Features Next/Previous buttons, shuffle randomizer, and auto-rotation every 14 seconds.
+
+### 9. 📌 Fixed Sidebar Navigation & Independent Body Scrolling
+- **Viewport-Locked Sidebar**: Sidebar stays permanently fixed at 100vh height (`w-64 shrink-0 h-screen`).
+- **Independent Body Scrolling**: Only the main right content pane (`<main>`) scrolls vertically, preventing entire-page window scrolling and preserving fast navigation access at all times.
+
 ---
 
 ## 🛠️ Tech Stack
@@ -62,7 +72,7 @@ Users can always identify their active mode:
 | **Frontend** | Next.js 16.4.3 (App Router, Turbopack), React 19, Tailwind CSS v4, Base UI, Lucide Icons, Recharts, date-fns |
 | **Backend** | NestJS 11, TypeScript, Passport.js, JWT, bcrypt, class-validator, class-transformer |
 | **Database & ORM** | PostgreSQL 16 (Alpine), Prisma ORM 6.4 |
-| **API Docs & Testing** | Swagger / OpenAPI 3.0, Jest (35 backend unit tests), Node Test Runner (13 frontend unit tests) |
+| **API Docs & Testing** | Swagger / OpenAPI 3.0, Jest (35 backend unit tests), Node Test Runner (15 frontend unit tests) |
 
 ---
 
