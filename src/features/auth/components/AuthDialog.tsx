@@ -122,6 +122,16 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
         router.push(`/verify-email?email=${encodeURIComponent(loginEmail.trim())}`);
         return;
       }
+      if (
+        err?.error === 'ACCOUNT_NOT_FOUND' ||
+        err?.message?.toLowerCase().includes('no account found') ||
+        err?.message?.toLowerCase().includes('not registered')
+      ) {
+        setError(
+          `No account found with "${loginEmail.trim()}". Check for typos, or switch to the Sign Up tab to create one.`,
+        );
+        return;
+      }
       setError(err?.message || 'Email and password did not match. Please verify your credentials.');
     }
   };

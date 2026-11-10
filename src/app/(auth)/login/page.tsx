@@ -30,6 +30,13 @@ import { cn } from '@/lib/utils';
 import { PasswordStrengthMeter } from '@/features/auth/components/PasswordStrengthMeter';
 import { validateEmailAddress } from '@/features/auth/utils/email-validator';
 
+interface AuthErrorInfo {
+  title: string;
+  message: string;
+  type: 'not_found' | 'invalid_password' | 'service_error' | 'generic';
+  suggestedEmail?: string;
+}
+
 export default function LoginPage() {
   const { login, loginAsDemo } = useAuth();
   const router = useRouter();
@@ -41,12 +48,17 @@ export default function LoginPage() {
     email?: string;
     password?: string;
   }>({});
-  const [serverError, setServerError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<AuthErrorInfo | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const emailParam = params.get('email');
+      if (emailParam) setEmail(emailParam);
+    }
   }, []);
 
   // Real-time validation checks for disabling/enabling the submit button
@@ -83,7 +95,7 @@ export default function LoginPage() {
     if (fieldErrors.email) {
       setFieldErrors((prev) => ({ ...prev, email: undefined }));
     }
-    if (serverError) setServerError(null);
+    if (authError) setAuthError(null);
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,7 +103,7 @@ export default function LoginPage() {
     if (fieldErrors.password) {
       setFieldErrors((prev) => ({ ...prev, password: undefined }));
     }
-    if (serverError) setServerError(null);
+    if (authError) setAuthError(null);
   };
 
   const handleSuggestPassword = (suggested: string) => {
@@ -100,12 +112,12 @@ export default function LoginPage() {
     if (fieldErrors.password) {
       setFieldErrors((prev) => ({ ...prev, password: undefined }));
     }
-    if (serverError) setServerError(null);
+    if (authError) setAuthError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setServerError(null);
+    setAuthError(null);
 
     if (!validateForm()) {
       return;
@@ -132,17 +144,68 @@ export default function LoginPage() {
         return;
       }
 
-      setServerError(
-        err?.message ||
-          'Email and password combination did not match. Please verify your credentials or jump in as Demo.',
-      );
+      const rawMsg = String(err?.message || '');
+      const rawError = String(err?.error || '');
+
+      // 1. Account not found (unauthorized / unregistered email)
+      if (
+        rawError === 'ACCOUNT_NOT_FOUND' ||
+        rawMsg.toLowerCase().includes('no account found') ||
+        rawMsg.toLowerCase().includes('not registered') ||
+        rawMsg.toLowerCase().includes('unregistered')
+      ) {
+        setAuthError({
+          title: 'Account Not Found',
+          message: `We couldn't find a registered account for "${email.trim()}". Check for spelling typos, or sign up below to get started.`,
+          type: 'not_found',
+          suggestedEmail: email.trim(),
+        });
+        return;
+      }
+
+      // 2. Incorrect password
+      if (
+        rawError === 'INVALID_CREDENTIALS' ||
+        rawMsg.toLowerCase().includes('incorrect password') ||
+        rawMsg.toLowerCase().includes('password you entered is incorrect')
+      ) {
+        setAuthError({
+          title: 'Incorrect Password',
+          message: 'The password entered does not match our records for this account. Please verify and try again.',
+          type: 'invalid_password',
+        });
+        return;
+      }
+
+      // 3. Database synchronization / connection error
+      if (
+        rawError === 'AUTH_DATABASE_UNAVAILABLE' ||
+        rawError === 'DatabaseConfigurationError' ||
+        rawMsg.includes('P2022') ||
+        rawMsg.toLowerCase().includes('database') ||
+        rawMsg.toLowerCase().includes('connect')
+      ) {
+        setAuthError({
+          title: 'Database Synchronizing',
+          message: 'The cloud database is currently synchronizing or unreachable. You can try again in a moment, or jump in right now with Instant Demo.',
+          type: 'service_error',
+        });
+        return;
+      }
+
+      // 4. Fallback friendly error
+      setAuthError({
+        title: 'Unable to Sign In',
+        message: rawMsg || 'The email and password combination did not match. Please verify your credentials or register for an account.',
+        type: 'generic',
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDemoLogin = () => {
-    setServerError(null);
+    setAuthError(null);
     setFieldErrors({});
     loginAsDemo();
     router.push('/');
@@ -168,14 +231,69 @@ export default function LoginPage() {
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* Server / Network Error Banner */}
-        {serverError && (
-          <div className="flex items-start gap-2.5 rounded-xl border border-destructive/20 bg-destructive/10 p-3.5 text-xs text-destructive animate-in fade-in-50 duration-200">
-            <AlertCircle className="size-4 shrink-0 mt-0.5" />
-            <div className="space-y-0.5">
-              <p className="font-semibold">Access Blocked</p>
-              <p className="leading-relaxed">{serverError}</p>
+        {/* Dynamic & Helpful Auth Error Banner */}
+        {authError && (
+          <div
+            className={cn(
+              'rounded-xl border p-4 text-xs animate-in fade-in-50 duration-200 space-y-2.5',
+              authError.type === 'not_found'
+                ? 'border-amber-500/35 bg-amber-500/10 text-amber-900 dark:text-amber-200'
+                : 'border-destructive/25 bg-destructive/10 text-destructive'
+            )}
+          >
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="size-4 shrink-0 mt-0.5 text-inherit" />
+              <div className="space-y-1 flex-1">
+                <p className="font-semibold text-sm leading-none">{authError.title}</p>
+                <p className="leading-relaxed opacity-95">{authError.message}</p>
+              </div>
             </div>
+
+            {/* Direct Action Guidance for Unregistered Accounts */}
+            {authError.type === 'not_found' && (
+              <div className="pt-2 border-t border-amber-500/25 flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white font-medium cursor-pointer shadow-xs gap-1.5"
+                  onClick={() =>
+                    router.push(
+                      `/register?email=${encodeURIComponent(authError.suggestedEmail || email.trim())}`
+                    )
+                  }
+                >
+                  <span>Sign Up with this Email</span>
+                  <ArrowRight className="size-3.5" />
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs border-amber-500/40 text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 cursor-pointer gap-1.5"
+                  onClick={handleDemoLogin}
+                >
+                  <Sparkles className="size-3 text-amber-500" />
+                  <span>Try Instant Demo Instead</span>
+                </Button>
+              </div>
+            )}
+
+            {/* Direct Action Guidance for Database / Server issues */}
+            {authError.type === 'service_error' && (
+              <div className="pt-2 border-t border-destructive/20 flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs border-destructive/40 text-destructive hover:bg-destructive/10 cursor-pointer gap-1.5"
+                  onClick={handleDemoLogin}
+                >
+                  <Sparkles className="size-3" />
+                  <span>Continue with Instant Demo (Offline)</span>
+                </Button>
+              </div>
+            )}
           </div>
         )}
 

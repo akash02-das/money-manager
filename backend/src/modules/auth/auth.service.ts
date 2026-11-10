@@ -211,17 +211,41 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const normalizedEmail = dto.email.toLowerCase().trim();
-    const user = await this.prisma.user.findUnique({
-      where: { email: normalizedEmail },
-    });
+    let user;
+    try {
+      user = await this.prisma.user.findUnique({
+        where: { email: normalizedEmail },
+      });
+    } catch (err: any) {
+      this.logger.error(
+        `Database lookup error during login for ${normalizedEmail}: ${err?.message}`,
+        err?.stack,
+      );
+      throw new UnauthorizedException({
+        statusCode: 401,
+        error: 'AUTH_DATABASE_UNAVAILABLE',
+        message:
+          'Unable to reach the authentication service. Please check your connection or explore with Instant Demo.',
+      });
+    }
 
     if (!user) {
-      throw new UnauthorizedException('Invalid email or password.');
+      throw new UnauthorizedException({
+        statusCode: 401,
+        error: 'ACCOUNT_NOT_FOUND',
+        message:
+          'No account found with this email address. Please check your spelling or sign up for a new account.',
+      });
     }
 
     const isMatch = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isMatch) {
-      throw new UnauthorizedException('Invalid email or password.');
+      throw new UnauthorizedException({
+        statusCode: 401,
+        error: 'INVALID_CREDENTIALS',
+        message:
+          'The password you entered is incorrect. Please verify your password and try again.',
+      });
     }
 
     // Strict access control: Unverified accounts MUST NOT access the dashboard

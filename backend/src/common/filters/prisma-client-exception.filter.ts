@@ -56,13 +56,24 @@ export class PrismaClientExceptionFilter implements ExceptionFilter {
         break;
       }
 
+      case 'P2022': {
+        this.logger.error(
+          `Database column missing error [P2022]: ${exception.message}`,
+        );
+        status = HttpStatus.INTERNAL_SERVER_ERROR;
+        message =
+          'A database schema synchronization error occurred. Please ensure migrations have been applied.';
+        error = 'DatabaseConfigurationError';
+        break;
+      }
+
       default: {
         this.logger.error(
           `Unhandled Prisma Error [${exception.code}]: ${exception.message}`,
         );
-        status = HttpStatus.BAD_REQUEST;
-        message = `Database query error: ${exception.code}`;
-        error = 'BadRequest';
+        status = HttpStatus.INTERNAL_SERVER_ERROR;
+        message = 'A temporary database error occurred. Please try again shortly.';
+        error = 'InternalDatabaseError';
         break;
       }
     }

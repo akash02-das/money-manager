@@ -54,6 +54,13 @@ export default function RegisterPage() {
 
   useEffect(() => {
     setIsMounted(true);
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const emailParam = params.get('email');
+      if (emailParam) {
+        setEmail(emailParam.trim());
+      }
+    }
   }, []);
 
   const passwordEvaluation = evaluatePasswordStrength(password);
