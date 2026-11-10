@@ -31,10 +31,7 @@ export function TransactionsListView() {
     totalExpense,
     netCashFlow,
     totalCount,
-    isCreateModalOpen,
     openCreateModal,
-    closeCreateModal,
-    createTransaction,
     updateTransaction,
     deleteTransaction,
     resetToDefault,
@@ -165,11 +162,6 @@ export function TransactionsListView() {
   }, [filteredAndSortedTransactions, currentPage, pageSize]);
 
   // Actions
-  const handleCreateSubmit = async (data: TransactionFormData) => {
-    await createTransaction(data);
-    closeCreateModal();
-  };
-
   const handleEditSubmit = async (data: TransactionFormData) => {
     if (transactionToEdit) {
       await updateTransaction(transactionToEdit.id, data);
@@ -319,15 +311,6 @@ export function TransactionsListView() {
           </div>
         </div>
       )}
-
-      {/* Create Transaction Modal */}
-      <TransactionFormDialog
-        open={isCreateModalOpen}
-        onOpenChange={(open) => {
-          if (!open) closeCreateModal();
-        }}
-        onSubmit={handleCreateSubmit}
-      />
 
       {/* Edit Transaction Modal */}
       <TransactionFormDialog

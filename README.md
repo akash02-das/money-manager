@@ -62,7 +62,7 @@ Users can always identify their active mode:
 | **Frontend** | Next.js 16.4.3 (App Router, Turbopack), React 19, Tailwind CSS v4, Base UI, Lucide Icons, Recharts, date-fns |
 | **Backend** | NestJS 11, TypeScript, Passport.js, JWT, bcrypt, class-validator, class-transformer |
 | **Database & ORM** | PostgreSQL 16 (Alpine), Prisma ORM 6.4 |
-| **API Docs & Testing** | Swagger / OpenAPI 3.0, Jest (35 backend unit tests), Node Test Runner (9 frontend unit tests) |
+| **API Docs & Testing** | Swagger / OpenAPI 3.0, Jest (35 backend unit tests), Node Test Runner (11 frontend unit tests) |
 
 ---
 

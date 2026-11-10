@@ -22,6 +22,7 @@ import { useTransactions } from '@/features/transactions/hooks/useTransactions';
 import { useSettings } from '@/features/settings/hooks/useSettings';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { AuthDialog } from '@/features/auth/components/AuthDialog';
+import { TransactionFormDialog } from '@/features/transactions/components/TransactionFormDialog';
 import { CURRENCY_SYMBOLS } from '@/lib/formatters';
 
 const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
@@ -53,7 +54,12 @@ const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
 
 export function Header() {
   const pathname = usePathname();
-  const { openCreateModal } = useTransactions();
+  const {
+    isCreateModalOpen,
+    openCreateModal,
+    closeCreateModal,
+    createTransaction,
+  } = useTransactions();
   const { profile, preferences } = useSettings();
   const { user, isAuthenticated, isBackendConnected, isDemo, isVerified, accountType, logout } = useAuth();
   const [todayFormatted, setTodayFormatted] = useState<string>('');
@@ -253,6 +259,17 @@ export function Header() {
       </header>
 
       <AuthDialog open={authDialogOpen} onOpenChange={setAuthDialogOpen} />
+
+      <TransactionFormDialog
+        open={isCreateModalOpen}
+        onOpenChange={(open) => {
+          if (!open) closeCreateModal();
+        }}
+        onSubmit={async (data) => {
+          await createTransaction(data);
+          closeCreateModal();
+        }}
+      />
     </>
   );
 }

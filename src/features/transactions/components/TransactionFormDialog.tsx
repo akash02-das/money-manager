@@ -50,9 +50,12 @@ export function TransactionFormDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditMode = Boolean(transactionToEdit);
 
-  const activeAccounts = accounts.filter((a) => !a.isArchived);
-  const activeCategories = categories.filter((c) => !c.isArchived);
-  const defaultExpenseCat = activeCategories.find((c) => c.type === 'EXPENSE');
+  const activeAccounts = useMemo(() => accounts.filter((a) => !a.isArchived), [accounts]);
+  const activeCategories = useMemo(() => categories.filter((c) => !c.isArchived), [categories]);
+  const defaultExpenseCat = useMemo(
+    () => activeCategories.find((c) => c.type === 'EXPENSE'),
+    [activeCategories]
+  );
 
   const defaultDateStr = format(new Date(), 'yyyy-MM-dd');
 
@@ -89,23 +92,6 @@ export function TransactionFormDialog({
     );
   }, [activeCategories, selectedType]);
 
-  // Synchronize categoryId whenever selectedType changes to prevent cross-type leakage
-  useEffect(() => {
-    if (!open) return;
-
-    if (selectedType === 'TRANSFER') {
-      if (selectedCategoryId) {
-        setValue('categoryId', '', { shouldValidate: true });
-      }
-      return;
-    }
-
-    const isValidMatch = matchingCategories.some((c) => c.id === selectedCategoryId);
-    if (!isValidMatch && matchingCategories.length > 0) {
-      setValue('categoryId', matchingCategories[0].id, { shouldValidate: true });
-    }
-  }, [open, selectedType, selectedCategoryId, matchingCategories, setValue]);
-
   // Seamless handler for switching transaction types
   const handleTypeChange = (newType: TransactionType) => {
     setValue('type', newType, { shouldValidate: true, shouldDirty: true });
@@ -126,41 +112,43 @@ export function TransactionFormDialog({
     }
   };
 
+  // Reset or populate form state only when dialog opens or editing transaction changes
   useEffect(() => {
-    if (open) {
-      if (transactionToEdit) {
-        let dateStr = defaultDateStr;
-        try {
-          dateStr = format(new Date(transactionToEdit.date), 'yyyy-MM-dd');
-        } catch {
-          dateStr = defaultDateStr;
-        }
+    if (!open) return;
 
-        reset({
-          type: transactionToEdit.type,
-          amount: transactionToEdit.amount,
-          description: transactionToEdit.description,
-          date: dateStr,
-          accountId: transactionToEdit.accountId,
-          toAccountId: transactionToEdit.toAccountId || '',
-          categoryId: transactionToEdit.categoryId || '',
-          notes: transactionToEdit.notes || '',
-        });
-      } else {
-        const initialExpCat = activeCategories.find((c) => c.type === 'EXPENSE');
-        reset({
-          type: 'EXPENSE',
-          amount: 0,
-          description: '',
-          date: defaultDateStr,
-          accountId: activeAccounts[0]?.id || '',
-          toAccountId: '',
-          categoryId: initialExpCat?.id || '',
-          notes: '',
-        });
+    if (transactionToEdit) {
+      let dateStr = defaultDateStr;
+      try {
+        dateStr = format(new Date(transactionToEdit.date), 'yyyy-MM-dd');
+      } catch {
+        dateStr = defaultDateStr;
       }
+
+      reset({
+        type: transactionToEdit.type,
+        amount: transactionToEdit.amount,
+        description: transactionToEdit.description,
+        date: dateStr,
+        accountId: transactionToEdit.accountId,
+        toAccountId: transactionToEdit.toAccountId || '',
+        categoryId: transactionToEdit.categoryId || '',
+        notes: transactionToEdit.notes || '',
+      });
+    } else {
+      const initialExpCat = activeCategories.find((c) => c.type === 'EXPENSE');
+      reset({
+        type: 'EXPENSE',
+        amount: 0,
+        description: '',
+        date: defaultDateStr,
+        accountId: activeAccounts[0]?.id || '',
+        toAccountId: '',
+        categoryId: initialExpCat?.id || '',
+        notes: '',
+      });
     }
-  }, [open, transactionToEdit, reset, defaultDateStr, activeAccounts, activeCategories]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, transactionToEdit]);
 
   const handleFormSubmit = async (values: TransactionFormData) => {
     try {
