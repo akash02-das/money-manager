@@ -22,12 +22,10 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  ShieldCheck,
   TrendingUp,
   Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { PasswordStrengthMeter } from '@/features/auth/components/PasswordStrengthMeter';
 import { validateEmailAddress } from '@/features/auth/utils/email-validator';
 
 interface AuthErrorInfo {
@@ -38,7 +36,7 @@ interface AuthErrorInfo {
 }
 
 export default function LoginPage() {
-  const { login, loginAsDemo } = useAuth();
+  const { login } = useAuth();
   const router = useRouter();
 
   const [email, setEmail] = useState('');
@@ -64,10 +62,10 @@ export default function LoginPage() {
   // Real-time validation checks for disabling/enabling the submit button
   const emailValidation = validateEmailAddress(email);
   const isEmailValid = emailValidation.isValidSyntax && !emailValidation.isDisposable;
-  const isPasswordValid = password.length >= 6;
+  const isPasswordValid = password.length > 0;
   const isFormValid = isEmailValid && isPasswordValid;
 
-  // Custom client-side validation without browser default tooltips
+  // Custom client-side validation
   const validateForm = (): boolean => {
     const errors: { email?: string; password?: string } = {};
 
@@ -81,9 +79,7 @@ export default function LoginPage() {
     }
 
     if (!password) {
-      errors.password = 'Don’t forget your password! Even Fort Knox needs a key.';
-    } else if (password.length < 6) {
-      errors.password = 'Passwords must be at least 6 characters.';
+      errors.password = 'Please enter your password to unlock your vault.';
     }
 
     setFieldErrors(errors);
@@ -100,15 +96,6 @@ export default function LoginPage() {
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPassword(e.target.value);
-    if (fieldErrors.password) {
-      setFieldErrors((prev) => ({ ...prev, password: undefined }));
-    }
-    if (authError) setAuthError(null);
-  };
-
-  const handleSuggestPassword = (suggested: string) => {
-    setPassword(suggested);
-    setShowPassword(true);
     if (fieldErrors.password) {
       setFieldErrors((prev) => ({ ...prev, password: undefined }));
     }
@@ -150,7 +137,7 @@ export default function LoginPage() {
       ) {
         setAuthError({
           title: 'Account Not Found',
-          message: `We couldn't find a registered account for "${email.trim()}". Check for spelling typos, or sign up below to get started.`,
+          message: `We couldn't find a registered account for "${email.trim()}". Check for spelling typos, or create an account below.`,
           type: 'not_found',
           suggestedEmail: email.trim(),
         });
@@ -180,8 +167,8 @@ export default function LoginPage() {
         rawMsg.toLowerCase().includes('connect')
       ) {
         setAuthError({
-          title: 'Database Synchronizing',
-          message: 'The cloud database is currently synchronizing or unreachable. You can try again in a moment, or jump in right now with Instant Demo.',
+          title: 'Authentication Service Synchronizing',
+          message: 'The service is currently synchronizing or unreachable. Please verify your connection or try again shortly.',
           type: 'service_error',
         });
         return;
@@ -196,13 +183,6 @@ export default function LoginPage() {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleDemoLogin = () => {
-    setAuthError(null);
-    setFieldErrors({});
-    loginAsDemo();
-    router.push('/');
   };
 
   return (
@@ -259,40 +239,20 @@ export default function LoginPage() {
                   <span>Sign Up with this Email</span>
                   <ArrowRight className="size-3.5" />
                 </Button>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 text-xs border-amber-500/40 text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 cursor-pointer gap-1.5"
-                  onClick={handleDemoLogin}
-                >
-                  <Sparkles className="size-3 text-amber-500" />
-                  <span>Try Instant Demo Instead</span>
-                </Button>
               </div>
             )}
 
             {/* Direct Action Guidance for Database / Server issues */}
             {authError.type === 'service_error' && (
-              <div className="pt-2 border-t border-destructive/20 flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 text-xs border-destructive/40 text-destructive hover:bg-destructive/10 cursor-pointer gap-1.5"
-                  onClick={handleDemoLogin}
-                >
-                  <Sparkles className="size-3" />
-                  <span>Continue with Instant Demo (Offline)</span>
-                </Button>
+              <div className="pt-2 border-t border-destructive/20 text-[11px] text-destructive/90">
+                <span>Please check your connection and retry in a moment.</span>
               </div>
             )}
           </div>
         )}
 
         {/* Form with noValidate to block default browser tooltip bubbles */}
-        <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4" suppressHydrationWarning>
           {/* Email Field */}
           <div className="space-y-1.5">
             <Label htmlFor="email" className="text-xs font-semibold text-foreground">
@@ -327,7 +287,7 @@ export default function LoginPage() {
             </div>
 
             {/* Email Typo Suggestion */}
-            {emailValidation.suggestedEmail && !emailValidation.isDisposable && (
+            {isMounted && emailValidation.suggestedEmail && !emailValidation.isDisposable && (
               <div className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-50/60 dark:bg-amber-950/20 p-2 text-xs text-amber-900 dark:text-amber-300 animate-in fade-in-50 duration-200">
                 <div className="flex items-center gap-1.5">
                   <Sparkles className="size-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
@@ -374,11 +334,11 @@ export default function LoginPage() {
                 htmlFor="password"
                 className="text-xs font-semibold text-foreground"
               >
-                Secret Password
+                Password
               </Label>
               <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                 <Lock className="size-3" />
-                <span>Protected</span>
+                <span>End-to-end encrypted</span>
               </span>
             </div>
             <div className="relative" suppressHydrationWarning>
@@ -424,12 +384,6 @@ export default function LoginPage() {
               )}
             </div>
 
-            {/* Interactive Strong Password Engine & Demo */}
-            <PasswordStrengthMeter
-              password={password}
-              onSelectPassword={handleSuggestPassword}
-            />
-
             {fieldErrors.password && (
               <p
                 id="password-error"
@@ -441,8 +395,8 @@ export default function LoginPage() {
             )}
           </div>
 
-          {/* Primary Action Button (Disabled until email & password are valid) */}
-          <div className="space-y-1.5">
+          {/* Primary Action Button (Enabled once email and password are provided) */}
+          <div className="space-y-1.5 pt-1">
             <Button
               type="submit"
               size="lg"
@@ -461,7 +415,7 @@ export default function LoginPage() {
                 </>
               ) : (
                 <>
-                  <span>Unlock My Dashboard</span>
+                  <span>Sign In to Financial Cockpit</span>
                   <ArrowRight className="size-4" />
                 </>
               )}
@@ -470,43 +424,12 @@ export default function LoginPage() {
             {!isFormValid && (email.length > 0 || password.length > 0) && (
               <p className="text-[11px] text-center text-muted-foreground animate-in fade-in-50 duration-200">
                 {!isEmailValid
-                  ? 'Please enter a valid email address to unlock'
-                  : 'Password must be at least 6 characters'}
+                  ? 'Please enter a valid email address'
+                  : 'Please enter your password'}
               </p>
             )}
           </div>
         </form>
-
-        {/* Catchy Divider */}
-        <div className="relative my-4">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center text-[11px] uppercase tracking-wider">
-            <span className="bg-card px-2.5 text-muted-foreground font-medium">
-              In a hurry to explore?
-            </span>
-          </div>
-        </div>
-
-        {/* Quick Instant Demo Account */}
-        <div className="space-y-1.5 text-center">
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            className="w-full gap-2 border-emerald-500/30 text-emerald-600 hover:bg-emerald-50/70 dark:text-emerald-400 dark:hover:bg-emerald-950/40 cursor-pointer font-medium"
-            onClick={handleDemoLogin}
-            disabled={isSubmitting}
-          >
-            <Sparkles className="size-4 text-emerald-500" />
-            <span>⚡ Jump in with Instant Demo</span>
-          </Button>
-          <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
-            <ShieldCheck className="size-3 text-emerald-500" />
-            <span>Local Account — Stored only in this browser</span>
-          </p>
-        </div>
       </CardContent>
 
       <CardFooter className="flex justify-center border-t border-border/40 bg-muted/20 py-3.5">
@@ -516,7 +439,7 @@ export default function LoginPage() {
             href="/register"
             className="font-semibold text-primary hover:underline transition-all inline-flex items-center gap-0.5"
           >
-            <span>Claim your financial cockpit</span>
+            <span>Create a verified account</span>
             <span aria-hidden="true">&rarr;</span>
           </Link>
         </p>
