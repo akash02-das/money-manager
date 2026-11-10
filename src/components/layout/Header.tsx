@@ -185,28 +185,30 @@ export function Header() {
                 }
               />
               <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1.5 pb-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-foreground truncate">{displayName}</p>
-                      {isDemo ? (
-                        <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[10px] font-semibold shrink-0">
-                          Local Account
-                        </Badge>
-                      ) : isVerified ? (
-                        <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold shrink-0">
-                          Verified
-                        </Badge>
-                      ) : null}
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1.5 pb-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-foreground truncate">{displayName}</p>
+                        {isDemo ? (
+                          <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[10px] font-semibold shrink-0">
+                            Local Account
+                          </Badge>
+                        ) : isVerified ? (
+                          <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold shrink-0">
+                            Verified
+                          </Badge>
+                        ) : null}
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
+                      <p className="text-[11px] text-muted-foreground/85 leading-snug pt-0.5">
+                        {isDemo
+                          ? '💾 Stored only in this browser (LocalStorage).'
+                          : '☁️ Synced to PostgreSQL cloud database.'}
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
-                    <p className="text-[11px] text-muted-foreground/85 leading-snug pt-0.5">
-                      {isDemo
-                        ? '💾 Stored only in this browser (LocalStorage).'
-                        : '☁️ Synced to PostgreSQL cloud database.'}
-                    </p>
-                  </div>
-                </DropdownMenuLabel>
+                  </DropdownMenuLabel>
+                </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                   <DropdownMenuItem className="cursor-pointer gap-2" render={<Link href="/settings" />}>
